@@ -190,6 +190,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -b && cp -R scripts/ out/",
+    "test": "npm run compile && node test/coverageResults.test.js && node test/coverageTargets.test.js && node test/coverageInvocation.test.js",
     "watch": "tsc -b -w",
     "prettify": "prettier --write ."
   },
