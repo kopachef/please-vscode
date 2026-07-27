@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 
 import { workspacePath } from './utils';
 import { getBinPath } from './utils/pathUtils';
+import { formatTerminalCommand } from './commands/terminalCommand';
 
 export const TOOL_NAME = 'plz';
 export const BUILD_FILENAME_REGEX = /^BUILD(\.plz|\.build)?$/;
@@ -36,8 +37,30 @@ export function cmd(args: string[] = []): { bin: string; args: string[] } {
   return { bin: binPath(), args };
 }
 
+export interface RunCommandOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  token?: vscode.CancellationToken;
+  trimSpace?: boolean;
+}
+
 // Creates `Please` Output channel.
 export const outputChannel = vscode.window.createOutputChannel('Please');
+
+// Runs a Please command in the active integrated terminal, creating one if needed.
+export function runInTerminal(args: string[]): vscode.Terminal {
+  const cwd = workspacePath();
+  const terminal =
+    vscode.window.activeTerminal ??
+    vscode.window.createTerminal({
+      name: 'Please',
+      cwd,
+    });
+
+  terminal.show();
+  terminal.sendText(formatTerminalCommand(TOOL_NAME, args), true);
+  return terminal;
+}
 
 // Asynchronously runs a command where its progress is detailed on the `Please` Output channel.
 export function detachCommand(args: string[]): ChildProcessWithoutNullStreams {
@@ -66,8 +89,69 @@ export function detachCommand(args: string[]): ChildProcessWithoutNullStreams {
   return plz;
 }
 
+export async function runCommandAsync(
+  args: string[],
+  options: RunCommandOptions = {}
+): Promise<string> {
+  const plzCmd = cmd(args);
+
+  return await new Promise<string>((resolve, reject) => {
+    const plz = spawn(plzCmd.bin, plzCmd.args, {
+      cwd: options.cwd ?? workspacePath(),
+      env: options.env ?? process.env,
+    });
+    let stdout = '';
+    let stderr = '';
+    let completed = false;
+
+    const cancellation = options.token?.onCancellationRequested(() =>
+      plz.kill()
+    );
+    const disposeCancellation = () => cancellation?.dispose();
+
+    plz.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    plz.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    plz.on('error', (error) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      disposeCancellation();
+      reject(error);
+    });
+    plz.on('close', (code, signal) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      disposeCancellation();
+
+      if (options.token?.isCancellationRequested) {
+        resolve('');
+        return;
+      }
+      if (code !== 0) {
+        const reason =
+          stderr.trim() || `Command terminated with ${code || signal}`;
+        reject(new Error(reason));
+        return;
+      }
+
+      resolve(options.trimSpace === false ? stdout : stdout.trim());
+    });
+  });
+}
+
 // Runs a command with the intend of obtaining stdout. An error is throw if something fails.
-export function runCommand(args: string[], trimSpace = true, env = process.env): string {
+export function runCommand(
+  args: string[],
+  trimSpace = true,
+  env = process.env
+): string {
   const plzCmd = cmd(args);
 
   const plz = spawnSync(plzCmd.bin, plzCmd.args, {
@@ -176,9 +260,12 @@ export function isSandboxTarget(target: string): boolean {
 }
 
 // Creates a build label based on a BUILD filename and rule label.
-export function buildLabel(buildFilename: string, ruleLabel: string): string {
-  const repo = workspacePath();
-  if (repo && buildFilename.startsWith(repo)) {
+export function buildLabel(
+  repo: string,
+  buildFilename: string,
+  ruleLabel: string
+): string {
+  if (buildFilename.startsWith(repo)) {
     buildFilename = buildFilename.substring(repo.length + 1);
   }
 

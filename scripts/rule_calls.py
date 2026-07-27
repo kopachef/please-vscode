@@ -15,10 +15,10 @@ def get_rule_calls(build_file_contents):
     for stmt in module_ast.body:
         if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name):
             for kw in stmt.value.keywords:
-                if kw.arg == 'name' and isinstance(kw.value, ast.Str):
+                if kw.arg == 'name' and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
                     calls.append({
                         'id': stmt.value.func.id,
-                        'name': kw.value.s,
+                        'name': kw.value.value,
                         'line': stmt.value.lineno,
                     })
 

@@ -25,5 +25,5 @@ export async function plzCommand(args: {
     wholeCommand = [...wholeCommand, '--', ...runtimeArgs.split(' ')];
   }
 
-  plz.detachCommand(wholeCommand);
+  plz.runInTerminal(wholeCommand);
 }
