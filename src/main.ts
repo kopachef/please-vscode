@@ -11,6 +11,10 @@ import {
   plzTestDocumentCommand,
   SELECT_COVERAGE_TARGET_COMMAND,
 } from './commands';
+import {
+  CoverageDecorations,
+  registerCoverageCommands,
+} from './coverage/coverageDecorations';
 import { startLanguageClient } from './languageClient';
 import { LANGUAGE_DEBUG_IDS } from './languages/constants';
 import { GoTestCodeLensProvider } from './languages/go/codeLensProvider';
@@ -38,6 +42,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Load Go env variables
   loadGoEnv();
+
+  const coverageDecorations = new CoverageDecorations();
+  context.subscriptions.push(
+    coverageDecorations,
+    registerCoverageCommands(coverageDecorations)
+  );
 
   // Setup Go debugging
   try {
