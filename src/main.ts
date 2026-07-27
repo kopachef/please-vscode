@@ -4,9 +4,12 @@ import * as vscode from 'vscode';
 import {
   clipboardWriteCommand,
   plzCommand,
+  plzCoverActiveDocumentWithTargetCommand,
+  plzCoverDocumentCommand,
   plzDebugDocumentCommand,
   plzDebugTargetCommand,
   plzTestDocumentCommand,
+  SELECT_COVERAGE_TARGET_COMMAND,
 } from './commands';
 import { startLanguageClient } from './languageClient';
 import { LANGUAGE_DEBUG_IDS } from './languages/constants';
@@ -103,6 +106,18 @@ export async function activate(context: vscode.ExtensionContext) {
   // Setup plz-related commands
   context.subscriptions.push(
     vscode.commands.registerCommand('plz.test.document', plzTestDocumentCommand)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'plz.cover.document',
+      plzCoverDocumentCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      SELECT_COVERAGE_TARGET_COMMAND,
+      plzCoverActiveDocumentWithTargetCommand
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand(

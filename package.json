@@ -27,6 +27,22 @@
   ],
   "main": "./out/src/main",
   "contributes": {
+    "commands": [
+      {
+        "command": "plz.coverage.selectDocumentTarget",
+        "title": "Cover Current File with Target...",
+        "category": "Please"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "plz.coverage.selectDocumentTarget",
+          "when": "editorLangId == go || editorLangId == python",
+          "group": "navigation@101"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "properties": {
