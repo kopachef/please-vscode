@@ -9,6 +9,7 @@ export async function plzDebugDocumentCommand(args: {
   document: vscode.TextDocument;
   functionName?: string;
   language: Language;
+  target?: string;
 }): Promise<void> {
   try {
     if (vscode.debug.activeDebugSession) {
@@ -19,6 +20,7 @@ export async function plzDebugDocumentCommand(args: {
       document: { fileName },
       functionName,
       language,
+      target: requestedTarget,
     } = args;
 
     const debugTarget = languageTargetDebuggers[language];
@@ -28,7 +30,7 @@ export async function plzDebugDocumentCommand(args: {
       );
     }
 
-    const target = await retrieveInputFileTarget(fileName);
+    const target = requestedTarget ?? (await retrieveInputFileTarget(fileName));
     if (target === undefined) {
       return;
     }

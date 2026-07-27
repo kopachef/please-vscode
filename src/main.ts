@@ -2,17 +2,26 @@ import { execFileSync } from 'child_process';
 import * as vscode from 'vscode';
 
 import {
+  CLIPBOARD_WRITE_COMMAND,
   clipboardWriteCommand,
   plzCommand,
+  plzCoverDocumentCommand,
   plzDebugDocumentCommand,
   plzDebugTargetCommand,
   plzTestDocumentCommand,
 } from './commands';
+import {
+  CoverageDecorations,
+  registerCoverageCommands,
+} from './coverage/coverageDecorations';
 import { startLanguageClient } from './languageClient';
 import { LANGUAGE_DEBUG_IDS } from './languages/constants';
 import { GoTestCodeLensProvider } from './languages/go/codeLensProvider';
 import { GoDebugConfigurationProvider } from './languages/go/debugConfigurationProvider';
-import { BuildFileCodeLensProvider } from './languages/plz/codeLensProvider';
+import {
+  BuildFileCodeLensProvider,
+  registerBuildFileCodeLensCommands,
+} from './languages/plz/codeLensProvider';
 import { PythonDebugAdapterDescriptorProvider } from './languages/python/debugAdapterDescriptorFactory';
 import { PythonTestCodeLensProvider } from './languages/python/codeLensProvider';
 import { PythonDebugConfigurationProvider } from './languages/python/debugConfigurationProvider';
@@ -36,6 +45,13 @@ export async function activate(context: vscode.ExtensionContext) {
   // Load Go env variables
   loadGoEnv();
 
+  // Show line coverage from the results written by `plz cover`.
+  const coverageDecorations = new CoverageDecorations();
+  context.subscriptions.push(
+    coverageDecorations,
+    registerCoverageCommands(coverageDecorations)
+  );
+
   // Setup Go debugging
   try {
     plz.ensureMinVersion(
@@ -55,10 +71,15 @@ export async function activate(context: vscode.ExtensionContext) {
       )
     );
     // Setup Go codelenses
+    const goTestCodeLensProvider = new GoTestCodeLensProvider(
+      coverageDecorations
+    );
     context.subscriptions.push(
+      goTestCodeLensProvider,
+      goTestCodeLensProvider.registerCommands(),
       vscode.languages.registerCodeLensProvider(
         { language: 'go', scheme: 'file' },
-        new GoTestCodeLensProvider()
+        goTestCodeLensProvider
       )
     );
   } catch (e) {
@@ -67,7 +88,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Set up clipboard writing functionality
   context.subscriptions.push(
-    vscode.commands.registerCommand('clipboard.write', clipboardWriteCommand)
+    vscode.commands.registerCommand(
+      CLIPBOARD_WRITE_COMMAND,
+      clipboardWriteCommand
+    )
   );
 
   // Setup Python debugging
@@ -90,10 +114,15 @@ export async function activate(context: vscode.ExtensionContext) {
       )
     );
     // Setup Python codelenses
+    const pythonTestCodeLensProvider = new PythonTestCodeLensProvider(
+      coverageDecorations
+    );
     context.subscriptions.push(
+      pythonTestCodeLensProvider,
+      pythonTestCodeLensProvider.registerCommands(),
       vscode.languages.registerCodeLensProvider(
         { language: 'python', scheme: 'file' },
-        new PythonTestCodeLensProvider()
+        pythonTestCodeLensProvider
       )
     );
   } catch (e) {
@@ -103,6 +132,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Setup plz-related commands
   context.subscriptions.push(
     vscode.commands.registerCommand('plz.test.document', plzTestDocumentCommand)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'plz.cover.document',
+      plzCoverDocumentCommand
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -116,12 +151,14 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('plz', plzCommand)
   );
-
   // Set up BUILD file codelenses
+  const buildFileCodeLensProvider = new BuildFileCodeLensProvider();
   context.subscriptions.push(
+    buildFileCodeLensProvider,
+    registerBuildFileCodeLensCommands(buildFileCodeLensProvider),
     vscode.languages.registerCodeLensProvider(
       { language: 'plz', scheme: 'file' },
-      new BuildFileCodeLensProvider()
+      buildFileCodeLensProvider
     )
   );
 }

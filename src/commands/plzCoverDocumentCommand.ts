@@ -2,14 +2,14 @@ import {
   plzDocumentTestCommand,
   PlzDocumentTestCommandArgs,
 } from './plzDocumentTestCommand';
-import { retrieveTestTarget } from '../coverage/coverageTargets';
+import { retrieveCoverageTarget } from '../coverage/coverageTargets';
 
-export async function plzTestDocumentCommand(
+export async function plzCoverDocumentCommand(
   args: PlzDocumentTestCommandArgs
 ): Promise<void> {
   return plzDocumentTestCommand(
-    'test',
+    'cover',
     args,
-    args.sourceFile ? retrieveTestTarget : undefined
+    args.sourceFile ? retrieveCoverageTarget : undefined
   );
 }

@@ -10,7 +10,11 @@ See https://please.build or https://github.com/thought-machine/please for more i
 
 - Go
 - [Delve](https://github.com/go-delve/delve)
-- [Go Outline](https://github.com/ramya-rao-a/go-outline)
+- A Go document symbol provider, normally the VS Code Go extension with `gopls`
+
+See the
+[Go test symbol discovery decision](docs/decisions/go-test-symbol-discovery.md)
+for why the extension uses VS Code document symbols instead of `go-outline`.
 
 ### Python language requirements
 
