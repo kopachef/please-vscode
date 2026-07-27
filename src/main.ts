@@ -17,11 +17,11 @@ import {
 } from './coverage/coverageDecorations';
 import { startLanguageClient } from './languageClient';
 import { LANGUAGE_DEBUG_IDS } from './languages/constants';
-import { GoTestCodeLensProvider } from './languages/go/codeLensProvider';
+import { registerGoTestCodeLensProvider } from './languages/go/codeLensProvider';
 import { GoDebugConfigurationProvider } from './languages/go/debugConfigurationProvider';
 import { BuildFileCodeLensProvider } from './languages/plz/codeLensProvider';
 import { PythonDebugAdapterDescriptorProvider } from './languages/python/debugAdapterDescriptorFactory';
-import { PythonTestCodeLensProvider } from './languages/python/codeLensProvider';
+import { registerPythonTestCodeLensProvider } from './languages/python/codeLensProvider';
 import { PythonDebugConfigurationProvider } from './languages/python/debugConfigurationProvider';
 import * as plz from './please';
 import { getBinPath } from './utils/pathUtils';
@@ -69,10 +69,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     // Setup Go codelenses
     context.subscriptions.push(
-      vscode.languages.registerCodeLensProvider(
-        { language: 'go', scheme: 'file' },
-        new GoTestCodeLensProvider()
-      )
+      registerGoTestCodeLensProvider(coverageDecorations)
     );
   } catch (e) {
     vscode.window.showWarningMessage(e.message);
@@ -104,10 +101,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     // Setup Python codelenses
     context.subscriptions.push(
-      vscode.languages.registerCodeLensProvider(
-        { language: 'python', scheme: 'file' },
-        new PythonTestCodeLensProvider()
-      )
+      registerPythonTestCodeLensProvider(coverageDecorations)
     );
   } catch (e) {
     vscode.window.showWarningMessage(e.message);
