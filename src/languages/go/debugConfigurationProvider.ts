@@ -2,9 +2,21 @@ import { execFileSync } from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { retrieveInputFileTarget } from '../../commands/utils';
 import * as plz from '../../please';
-import { workspacePath } from '../../utils';
-import { getBinPathFromEnvVar, executableFileExists } from '../../utils/pathUtils';
+import { getBinPathUsingConfig, workspacePath } from '../../utils';
+import {
+  getBinPathFromEnvVar,
+  executableFileExists,
+} from '../../utils/pathUtils';
+import { LANGUAGE_DEBUG_IDS } from '../constants';
+
+import {
+  debugRuntimeArgs,
+  debugTarget,
+  pleaseDebugBinArgs,
+} from './debugConfiguration';
+import { debugStopOnEntryMode } from './debugBreakpoints';
 
 export class GoDebugConfigurationProvider
   implements vscode.DebugConfigurationProvider
@@ -20,8 +32,37 @@ export class GoDebugConfigurationProvider
     }
 
     try {
+      debugConfiguration.type =
+        debugConfiguration.type ?? LANGUAGE_DEBUG_IDS.go;
+      debugConfiguration.request = debugConfiguration.request ?? 'launch';
+      debugConfiguration.name = debugConfiguration.name ?? 'Please Go';
+
+      const target =
+        debugTarget(debugConfiguration.target) ??
+        (await retrieveInputFileTarget(activeEditor.document.fileName));
+      if (!target) {
+        return;
+      }
+      debugConfiguration.target = target;
+      debugConfiguration.runtimeArgs = debugRuntimeArgs(
+        debugConfiguration.runtimeArgs
+      );
+      debugConfiguration.stopOnEntryMode = debugStopOnEntryMode(
+        debugConfiguration.stopOnEntry,
+        vscode.workspace
+          .getConfiguration('plz', activeEditor.document.uri)
+          .get('debug.stopOnEntry')
+      );
+
       const repoRoot = workspacePath();
-      const toolchainPath = goToolchainPath();
+      const dlvPath = getBinPathUsingConfig('dlv');
+      if (!dlvPath) {
+        throw new Error(
+          'Cannot find Delve (dlv) required for Go debugging. Install it with "go install github.com/go-delve/delve/cmd/dlv@latest" or add its directory to go.gopath or PATH.'
+        );
+      }
+      const buildPaths = plz.runCommand(['query', 'config', 'build.path']);
+      const toolchainPath = goToolchainPath(buildPaths);
 
       // This is a `delve` configuration setting to get path mappings right.
       debugConfiguration.substitutePath = [
@@ -35,7 +76,7 @@ export class GoDebugConfigurationProvider
           from: path.join(
             repoRoot,
             plz.DEBUG_OUT_DIRECTORY,
-            plz.labelPackage(debugConfiguration.target),
+            plz.labelPackage(target),
             'third_party'
           ),
           to: 'third_party',
@@ -46,7 +87,11 @@ export class GoDebugConfigurationProvider
 
       const plzCmd = plz.cmd();
       debugConfiguration.plzBinPath = plzCmd.bin;
-      debugConfiguration.plzBinArgs = plzCmd.args;
+      debugConfiguration.plzBinArgs = pleaseDebugBinArgs(
+        plzCmd.args,
+        dlvPath,
+        buildPaths
+      );
 
       debugConfiguration.repoRoot = repoRoot;
     } catch (e) {
@@ -62,31 +107,40 @@ export class GoDebugConfigurationProvider
   }
 }
 
-export function goToolchainPath(): string {
+export function goToolchainPath(buildPaths: string): string {
   const configFields = ['plugin.go.gotool', 'go.gotool'];
   // This is required since we load `GOROOT` onto `process.env` at the start
   // of the extension activation.
-  const env = { ...process.env, GOROOT: '' }
-  const buildPaths = plz.runCommand(['query', 'config', 'build.path']);
+  const env = { ...process.env, GOROOT: '' };
 
   for (const configField of configFields) {
-    let goTool = plz.runCommand(['query', 'config', configField]);
+    const goTool = plz.runCommand(['query', 'config', configField]);
 
     // Check whether it is a target.
     if (goTool.startsWith(':') || goTool.startsWith('//')) {
       try {
-        return plz.runCommand(['run', goTool, '--', 'env', 'GOROOT'], true, env);
+        return plz.runCommand(
+          ['run', goTool, '--', 'env', 'GOROOT'],
+          true,
+          env
+        );
       } catch (error: unknown) {
-        console.warn(`Failed to run ${configField} ${goTool} to get GOROOT`, {error});
+        console.warn(`Failed to run ${configField} ${goTool} to get GOROOT`, {
+          error,
+        });
       }
     }
 
     // Check if an absolute path
     if (executableFileExists(goTool)) {
       try {
-        return execFileSync(goTool, ['env', 'GOROOT'], {env}).toString().trim();
+        return execFileSync(goTool, ['env', 'GOROOT'], { env })
+          .toString()
+          .trim();
       } catch (error: unknown) {
-        console.warn(`Failed to run ${configField} ${goTool} to get GOROOT`, {error});
+        console.warn(`Failed to run ${configField} ${goTool} to get GOROOT`, {
+          error,
+        });
       }
     }
 
@@ -97,9 +151,14 @@ export function goToolchainPath(): string {
 
       if (goToolPath) {
         try {
-          return execFileSync(goToolPath, ['env', 'GOROOT'], {env}).toString().trim();
+          return execFileSync(goToolPath, ['env', 'GOROOT'], { env })
+            .toString()
+            .trim();
         } catch (error: unknown) {
-          console.warn(`Failed to run ${configField} ${goTool} resolved as ${goToolPath} to get GOROOT`, {error});
+          console.warn(
+            `Failed to run ${configField} ${goTool} resolved as ${goToolPath} to get GOROOT`,
+            { error }
+          );
         }
       }
     }

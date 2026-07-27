@@ -28,6 +28,12 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { fixDriveCasingInWindows, getBinPath } from '../../utils/pathUtils';
 import { killProcessTree } from '../../utils/processUtils';
 
+import {
+  shouldStopOnEntry,
+  StopOnEntryMode,
+  unverifiedBreakpoint,
+} from './debugBreakpoints';
+
 const fsAccess = util.promisify(fs.access);
 const fsUnlink = util.promisify(fs.unlink);
 
@@ -250,6 +256,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   target: string; // Please target.
   runtimeArgs: string[]; // Runtime args for the target.
   stopOnEntry?: boolean;
+  stopOnEntryMode?: StopOnEntryMode;
   repoRoot: string;
   plzBinPath: string;
   plzBinArgs: string[];
@@ -566,7 +573,7 @@ export class GoDebugSession extends LoggingDebugSession {
   private pathSeparator: string;
   private stackFrameHandles: Handles<[number, number]>;
   private packageInfo = new Map<string, string>();
-  private stopOnEntry: boolean;
+  private stopOnEntryMode: StopOnEntryMode;
   private readonly initdone = 'initdone·';
 
   // TODO(suzmue): Use delve's implementation of substitute-path.
@@ -587,7 +594,7 @@ export class GoDebugSession extends LoggingDebugSession {
     this.variableHandles = new Handles<DebugVariable>();
     this.skipStopEventOnce = false;
     this.overrideStopReason = '';
-    this.stopOnEntry = false;
+    this.stopOnEntryMode = 'never';
     this.debugState = null;
     this.delve = null;
     this.breakpoints = new Map<string, DebugBreakpoint[]>();
@@ -684,7 +691,19 @@ export class GoDebugSession extends LoggingDebugSession {
     args: DebugProtocol.ConfigurationDoneArguments
   ): Promise<void> {
     log('ConfigurationDoneRequest');
-    if (this.stopOnEntry) {
+    const verifiedBreakpointCount = this.verifiedBreakpointCount();
+    if (shouldStopOnEntry(this.stopOnEntryMode, verifiedBreakpointCount)) {
+      if (
+        this.stopOnEntryMode === 'whenNoVerifiedBreakpoints' &&
+        verifiedBreakpointCount === 0
+      ) {
+        this.sendEvent(
+          new OutputEvent(
+            'Paused at entry because Delve did not verify any source breakpoints.\n',
+            'console'
+          )
+        );
+      }
       this.sendEvent(new StoppedEvent('entry', 1));
       log('StoppedEvent("entry")');
     } else if (!(await this.isDebuggeeRunning())) {
@@ -1492,9 +1511,8 @@ export class GoDebugSession extends LoggingDebugSession {
     response: DebugProtocol.LaunchResponse,
     args: LaunchRequestArguments
   ) {
-    if (args.stopOnEntry) {
-      this.stopOnEntry = args.stopOnEntry;
-    }
+    this.stopOnEntryMode =
+      args.stopOnEntryMode ?? (args.stopOnEntry ? 'always' : 'never');
     args.host = '127.0.0.1';
     args.port = random(2000, 50000);
 
@@ -1653,7 +1671,7 @@ export class GoDebugSession extends LoggingDebugSession {
           if (bp) {
             return { verified: true, line: bp.line };
           } else {
-            return { verified: false, line: args.lines[i] };
+            return unverifiedBreakpoint(args.breakpoints[i].line);
           }
         });
         this.breakpoints.set(
@@ -1680,6 +1698,14 @@ export class GoDebugSession extends LoggingDebugSession {
           logError(err);
         }
       );
+  }
+
+  private verifiedBreakpointCount(): number {
+    let count = 0;
+    this.breakpoints.forEach((breakpoints) => {
+      count += breakpoints.length;
+    });
+    return count;
   }
 
   private async getPackageInfo(

@@ -27,6 +27,22 @@
   ],
   "main": "./out/src/main",
   "contributes": {
+    "commands": [
+      {
+        "command": "plz.coverage.clear",
+        "title": "Clear Coverage",
+        "category": "Please"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "plz.coverage.clear",
+          "when": "plz.coverageVisible",
+          "group": "navigation@100"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "properties": {
@@ -40,6 +56,17 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the Please Language Server."
+        },
+        "plz.debug.stopOnEntry": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "never",
+            "whenNoVerifiedBreakpoints",
+            "always"
+          ],
+          "default": "whenNoVerifiedBreakpoints",
+          "description": "Controls when Please Go debugging pauses at entry. The default prevents a session from running silently when Delve cannot verify any source breakpoints."
         }
       }
     },
@@ -103,12 +130,12 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -b && cp -R scripts/ out/",
+    "compile": "tsc -b && mkdir -p out/scripts && cp -R scripts/. out/scripts/",
+    "test": "npm run compile && node test/targetDiscovery.test.js && node test/buildFileOutlineSymbols.test.js && node test/testFileActionLayout.test.js && node test/terminalCommand.test.js && node test/documentTestInvocation.test.js && node test/debugConfiguration.test.js && node test/debugBreakpoints.test.js && node test/coverageResults.test.js && node test/coverageTargets.test.js && node test/goTestSymbols.test.js",
     "watch": "tsc -b -w",
     "prettify": "prettier --write ."
   },
   "dependencies": {
-    "clipboardy": "^2.3.0",
     "json-rpc2": "^2.0.0",
     "semver": "^7.5.2",
     "tree-kill": "file:third_party/tree-kill",
