@@ -89,6 +89,14 @@
                       ],
                       "description": "An optional postfix or array of postfixes to append to the target name. If an array is provided, a separate CodeLens will be created for each postfix."
                     },
+                    "postfix_target_filter": {
+                      "type": "string",
+                      "description": "An optional filter string to match dynamically generated sub-targets via 'plz query completions'. A CodeLens will be created for each matched target."
+                    },
+                    "postfixTargetFilter": {
+                      "type": "string",
+                      "description": "An optional filter string to match dynamically generated sub-targets via 'plz query completions'. A CodeLens will be created for each matched target."
+                    },
                     "terminal": {
                       "type": "boolean",
                       "description": "An optional override to force running this specific code lens in the Integrated Terminal (true) or background Output Channel (false)."

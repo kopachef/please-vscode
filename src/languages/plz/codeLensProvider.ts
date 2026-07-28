@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import { DEBUGGABLE_LANGUAGE_RULES } from '../constants';
 import * as plz from '../../please';
-import { getBinPathUsingConfig } from '../../utils';
+import { getBinPathUsingConfig, workspacePath } from '../../utils';
 
 // Rule call item structure returned by `scripts/rule_calls.py`.
 interface RuleCall {
@@ -54,7 +54,7 @@ export class BuildFileCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     const codeLens: vscode.CodeLens[] = [];
-    for (const call of ruleCalls) {
+    const promises = ruleCalls.map(async (call) => {
       const { id: ruleName, name: ruleLabel, line } = call;
       const target = plz.buildLabel(document.fileName, ruleLabel);
 
@@ -64,8 +64,10 @@ export class BuildFileCodeLensProvider implements vscode.CodeLensProvider {
         new vscode.Position(line - 1, 0)
       );
 
+      const localLenses: vscode.CodeLens[] = [];
+
       // Copies the target onto the clipboard.
-      codeLens.push(
+      localLenses.push(
         new vscode.CodeLens(range, {
           title: '📋',
           command: 'clipboard.write',
@@ -80,7 +82,7 @@ export class BuildFileCodeLensProvider implements vscode.CodeLensProvider {
 
       // Not all rules are buildable and since we don't have enough
       // information, this guarantees nothing is missed.
-      codeLens.push(
+      localLenses.push(
         new vscode.CodeLens(range, {
           title: 'plz build',
           command: 'plz',
@@ -88,52 +90,152 @@ export class BuildFileCodeLensProvider implements vscode.CodeLensProvider {
         })
       );
 
-      const customLenses = getCustomCodeLenses(ruleName, target, range);
+      let completionsCache: string[] | undefined;
+      const getTargetCompletions = async (): Promise<string[]> => {
+        if (completionsCache === undefined) {
+          completionsCache = await queryCompletions(target);
+        }
+        return completionsCache;
+      };
+
+      const customLenses = await getCustomCodeLenses(ruleName, target, range, getTargetCompletions);
       if (customLenses.length > 0) {
-        codeLens.push(...customLenses);
+        localLenses.push(...customLenses);
       }
 
-      // This check might not always be true but it is enough for now.
-      if (ruleName.endsWith('_binary')) {
-        codeLens.push(
-          new vscode.CodeLens(range, {
-            title: 'plz run',
-            command: 'plz',
-            arguments: [{ command: 'run', args: [target], runtime: true }],
-          })
-        );
-      }
-      // This check might not always be true but it is enough for now.
-      else if (ruleName.endsWith('_test')) {
-        codeLens.push(
-          new vscode.CodeLens(range, {
-            title: 'plz test',
-            command: 'plz',
-            arguments: [{ command: 'test', args: ['--rerun', target] }],
-          })
-        );
-      } 
+      const isBinary = ruleName.endsWith('_binary');
+      const isTest = ruleName.endsWith('_test');
       
-      if (
-        Object.prototype.hasOwnProperty.call(
-          DEBUGGABLE_LANGUAGE_RULES,
-          ruleName
-        )
-      ) {
-        codeLens.push(
-          new vscode.CodeLens(range, {
-            title: 'plz debug',
-            command: 'plz.debug.target',
-            arguments: [
-              { target, language: DEBUGGABLE_LANGUAGE_RULES[ruleName] },
-            ],
-          })
-        );
+      let completions: string[] = [];
+      if (isBinary || isTest) {
+        completions = await getTargetCompletions();
       }
+
+      if (completions.length > 0 && !(completions.length === 1 && completions[0] === target)) {
+        for (const compTarget of completions) {
+          let suffix = '';
+          if (compTarget.startsWith(target)) {
+            suffix = compTarget.substring(target.length);
+            if (suffix.startsWith('_') || suffix.startsWith('-')) {
+              suffix = suffix.substring(1);
+            }
+          } else {
+            const colonIndex = compTarget.indexOf(':');
+            suffix = colonIndex !== -1 ? compTarget.substring(colonIndex + 1) : compTarget;
+          }
+
+          const suffixStr = suffix ? ` (${suffix})` : '';
+
+          if (isBinary) {
+            localLenses.push(
+              new vscode.CodeLens(range, {
+                title: `plz run${suffixStr}`,
+                command: 'plz',
+                arguments: [{ command: 'run', args: [compTarget], runtime: true }],
+              })
+            );
+          } else if (isTest) {
+            localLenses.push(
+              new vscode.CodeLens(range, {
+                title: `plz test${suffixStr}`,
+                command: 'plz',
+                arguments: [{ command: 'test', args: ['--rerun', compTarget] }],
+              })
+            );
+          }
+
+          if (
+            Object.prototype.hasOwnProperty.call(
+              DEBUGGABLE_LANGUAGE_RULES,
+              ruleName
+            )
+          ) {
+            localLenses.push(
+              new vscode.CodeLens(range, {
+                title: `plz debug${suffixStr}`,
+                command: 'plz.debug.target',
+                arguments: [
+                  { target: compTarget, language: DEBUGGABLE_LANGUAGE_RULES[ruleName] },
+                ],
+              })
+            );
+          }
+        }
+      } else {
+        // This check might not always be true but it is enough for now.
+        if (isBinary) {
+          localLenses.push(
+            new vscode.CodeLens(range, {
+              title: 'plz run',
+              command: 'plz',
+              arguments: [{ command: 'run', args: [target], runtime: true }],
+            })
+          );
+        }
+        // This check might not always be true but it is enough for now.
+        else if (isTest) {
+          localLenses.push(
+            new vscode.CodeLens(range, {
+              title: 'plz test',
+              command: 'plz',
+              arguments: [{ command: 'test', args: ['--rerun', target] }],
+            })
+          );
+        }
+
+        if (
+          Object.prototype.hasOwnProperty.call(
+            DEBUGGABLE_LANGUAGE_RULES,
+            ruleName
+          )
+        ) {
+          localLenses.push(
+            new vscode.CodeLens(range, {
+              title: 'plz debug',
+              command: 'plz.debug.target',
+              arguments: [
+                { target, language: DEBUGGABLE_LANGUAGE_RULES[ruleName] },
+              ],
+            })
+          );
+        }
+      }
+
+      return localLenses;
+    });
+
+    const results = await Promise.all(promises);
+    for (const lenses of results) {
+      codeLens.push(...lenses);
     }
 
     return codeLens;
   }
+}
+
+async function queryCompletions(target: string): Promise<string[]> {
+  const plzCmd = plz.cmd(['query', 'completions', target]);
+  if (!plzCmd.bin) {
+    return [];
+  }
+  const cwd = workspacePath();
+  return new Promise<string[]>((resolve) => {
+    execFile(
+      plzCmd.bin,
+      plzCmd.args,
+      { cwd, encoding: 'utf-8' },
+      (err, stdout, stderr) => {
+        if (err) {
+          return resolve([]);
+        }
+        const lines = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0 && (line.startsWith('//') || line.startsWith(':')));
+        resolve(lines);
+      }
+    );
+  });
 }
 
 async function getRuleCalls(
@@ -163,6 +265,8 @@ interface CustomCodeLensConfig {
   Command?: string; // support user typo casing
   postfix_target?: string | string[];
   postfixTarget?: string | string[]; // support camelCase
+  postfix_target_filter?: string;
+  postfixTargetFilter?: string; // support camelCase
   terminal?: boolean;
   Terminal?: boolean; // support user typo casing
   arguments?: unknown[];
@@ -177,11 +281,12 @@ interface RuleConfig {
 /**
  * Retrieves custom user-defined code lenses for a specific Please rule name.
  */
-function getCustomCodeLenses(
+async function getCustomCodeLenses(
   ruleName: string,
   target: string,
-  range: vscode.Range
-): vscode.CodeLens[] {
+  range: vscode.Range,
+  getCompletions: () => Promise<string[]>
+): Promise<vscode.CodeLens[]> {
   const codeLenses: vscode.CodeLens[] = [];
   const pleaseConfig = vscode.workspace
     .getConfiguration()
@@ -206,78 +311,120 @@ function getCustomCodeLenses(
     const command = lens.command || lens.Command;
     const userArgs = lens.arguments || lens.Arguments || [];
 
-    const rawPostfix = lens.postfix_target !== undefined ? lens.postfix_target : lens.postfixTarget;
-    const postfixes: string[] = Array.isArray(rawPostfix)
-      ? rawPostfix
-      : typeof rawPostfix === 'string'
-      ? [rawPostfix]
-      : [''];
+    const filter = lens.postfix_target_filter !== undefined ? lens.postfix_target_filter : lens.postfixTargetFilter;
 
-    for (const postfix of postfixes) {
-      const resolvedTarget = target + postfix;
-      // If an array of multiple postfixes is provided, make code lens titles distinct
-      const resolvedTitle =
-        title && Array.isArray(rawPostfix) && rawPostfix.length > 1
-          ? `${title} (${postfix})`
-          : title;
+    if (filter !== undefined) {
+      const completions = await getCompletions();
+      const matchedCompletions = completions.filter(c => c.endsWith(filter) || c.includes(filter));
 
-      if (resolvedTitle && command) {
-        let resolvedCommand = command;
-        let resolvedArgs: unknown[] = [];
-
-        const replaceTarget = (val: unknown): unknown => {
-          if (typeof val === 'string') {
-            return val
-              .replace(/\${target}/g, resolvedTarget)
-              .replace(/\$target/g, resolvedTarget);
+      for (const compTarget of matchedCompletions) {
+        let suffix = '';
+        if (compTarget.startsWith(target)) {
+          suffix = compTarget.substring(target.length);
+          if (suffix.startsWith('_') || suffix.startsWith('-')) {
+            suffix = suffix.substring(1);
           }
-          if (Array.isArray(val)) {
-            return val.map(replaceTarget);
-          }
-          if (val && typeof val === 'object') {
-            const res: Record<string, unknown> = {};
-            for (const k of Object.keys(val)) {
-              res[k] = replaceTarget((val as Record<string, unknown>)[k]);
-            }
-            return res;
-          }
-          return val;
-        };
-
-        const parts = command.trim().split(/\s+/);
-        if (parts[0] === 'plz' && parts.length > 1) {
-          resolvedCommand = 'plz';
-          const processedUserArgs = userArgs.map(replaceTarget);
-          const containsTarget =
-            JSON.stringify(userArgs).includes('${target}') ||
-            JSON.stringify(userArgs).includes('$target');
-          const finalSubArgs = containsTarget
-            ? processedUserArgs
-            : [resolvedTarget, ...processedUserArgs];
-
-          const terminalFlag = lens.terminal !== undefined ? lens.terminal : lens.Terminal;
-
-          resolvedArgs = [
-            {
-              command: parts[1],
-              args: finalSubArgs,
-              ...(terminalFlag !== undefined ? { terminal: terminalFlag } : {})
-            },
-          ];
         } else {
-          resolvedArgs = userArgs.map(replaceTarget);
+          const colonIndex = compTarget.indexOf(':');
+          suffix = colonIndex !== -1 ? compTarget.substring(colonIndex + 1) : compTarget;
         }
 
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: resolvedTitle,
-            command: resolvedCommand,
-            arguments: resolvedArgs,
-          })
-        );
+        const resolvedTitle =
+          title && matchedCompletions.length > 1 && suffix
+            ? `${title} (${suffix})`
+            : title;
+
+        if (resolvedTitle && command) {
+          codeLenses.push(
+            buildCustomCodeLens(compTarget, resolvedTitle, command, userArgs, lens, range)
+          );
+        }
+      }
+    } else {
+      const rawPostfix = lens.postfix_target !== undefined ? lens.postfix_target : lens.postfixTarget;
+      const postfixes: string[] = Array.isArray(rawPostfix)
+        ? rawPostfix
+        : typeof rawPostfix === 'string'
+        ? [rawPostfix]
+        : [''];
+
+      for (const postfix of postfixes) {
+        const resolvedTarget = target + postfix;
+        // If an array of multiple postfixes is provided, make code lens titles distinct
+        const resolvedTitle =
+          title && Array.isArray(rawPostfix) && rawPostfix.length > 1
+            ? `${title} (${postfix})`
+            : title;
+
+        if (resolvedTitle && command) {
+          codeLenses.push(
+            buildCustomCodeLens(resolvedTarget, resolvedTitle, command, userArgs, lens, range)
+          );
+        }
       }
     }
   }
 
   return codeLenses;
+}
+
+function buildCustomCodeLens(
+  resolvedTarget: string,
+  resolvedTitle: string,
+  command: string,
+  userArgs: unknown[],
+  lens: CustomCodeLensConfig,
+  range: vscode.Range
+): vscode.CodeLens {
+  let resolvedCommand = command;
+  let resolvedArgs: unknown[] = [];
+
+  const replaceTarget = (val: unknown): unknown => {
+    if (typeof val === 'string') {
+      return val
+        .replace(/\${target}/g, resolvedTarget)
+        .replace(/\$target/g, resolvedTarget);
+    }
+    if (Array.isArray(val)) {
+      return val.map(replaceTarget);
+    }
+    if (val && typeof val === 'object') {
+      const res: Record<string, unknown> = {};
+      for (const k of Object.keys(val)) {
+        res[k] = replaceTarget((val as Record<string, unknown>)[k]);
+      }
+      return res;
+    }
+    return val;
+  };
+
+  const parts = command.trim().split(/\s+/);
+  if (parts[0] === 'plz' && parts.length > 1) {
+    resolvedCommand = 'plz';
+    const processedUserArgs = userArgs.map(replaceTarget);
+    const containsTarget =
+      JSON.stringify(userArgs).includes('${target}') ||
+      JSON.stringify(userArgs).includes('$target');
+    const finalSubArgs = containsTarget
+      ? processedUserArgs
+      : [resolvedTarget, ...processedUserArgs];
+
+    const terminalFlag = lens.terminal !== undefined ? lens.terminal : lens.Terminal;
+
+    resolvedArgs = [
+      {
+        command: parts[1],
+        args: finalSubArgs,
+        ...(terminalFlag !== undefined ? { terminal: terminalFlag } : {})
+      },
+    ];
+  } else {
+    resolvedArgs = userArgs.map(replaceTarget);
+  }
+
+  return new vscode.CodeLens(range, {
+    title: resolvedTitle,
+    command: resolvedCommand,
+    arguments: resolvedArgs,
+  });
 }
