@@ -10,6 +10,8 @@ export interface CoverageLineAttribution {
   uncoveredBy: string[];
 }
 
+const MAX_HOVER_TARGETS = 5;
+
 /**
  * Returns deterministic per-target evidence for a source line. Targets that
  * report the line as non-coverable, or do not report the file, are omitted.
@@ -39,4 +41,30 @@ export function coverageLineAttribution(
     coveredBy,
     uncoveredBy,
   };
+}
+
+/** Formats bounded target evidence for a VS Code coverage hover. */
+export function coverageAttributionMarkdown(
+  attribution: CoverageLineAttribution
+): string {
+  const lines = ['**Covered by**'];
+  if (attribution.coveredBy.length === 0) {
+    lines.push('No Please targets.');
+  } else {
+    appendTargets(lines, attribution.coveredBy);
+  }
+
+  return lines.join('\n\n');
+}
+
+function appendTargets(lines: string[], targets: string[]): void {
+  const visibleTargets = targets.slice(0, MAX_HOVER_TARGETS);
+  lines.push(visibleTargets.map((target) => `- \`${target}\``).join('\n'));
+
+  const remaining = targets.length - visibleTargets.length;
+  if (remaining > 0) {
+    lines.push(
+      `${remaining} additional target${remaining === 1 ? '' : 's'} omitted.`
+    );
+  }
 }

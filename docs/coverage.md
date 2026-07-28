@@ -98,7 +98,7 @@ it does not yet display that attribution in the editor.
 
 - Covered lines receive a green background and overview-ruler marker.
 - Uncovered lines receive a red background and overview-ruler marker.
-- Hovering a highlighted line explains its latest coverage status.
+- Hovering a highlighted line lists the Please targets that covered it.
 - The status bar shows coverage for the active file, or overall coverage when
   only a workspace summary is available.
 - A `[clear]` CodeLens appears while the active document has coverage.
@@ -122,7 +122,8 @@ report, and restarting the extension reloads an existing report.
   branch, condition, path, or mutation coverage.
 - Compound boolean expressions cannot be evaluated for missing truth-table
   combinations from line coverage alone.
-- Parsed per-target results are not yet shown in the editor.
+- Target attribution is shown for individual highlighted lines, but there is no
+  function-level or workspace-level attribution view yet.
 - Coverage depends on the files and statuses produced by Please and the
   language-specific coverage implementation.
 - Only directly associated test targets are selected automatically.
