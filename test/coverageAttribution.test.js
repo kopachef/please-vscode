@@ -1,6 +1,7 @@
 const assert = require('assert').strict;
 
 const {
+  coverageAttributionMarkdown,
   coverageLineAttribution,
 } = require('../out/src/coverage/coverageAttribution');
 
@@ -40,6 +41,41 @@ assert.deepStrictEqual(
 assert.throws(
   () => coverageLineAttribution(results, 'pkg/calculator/calculator.go', -1),
   /non-negative integer/
+);
+
+const hover = coverageAttributionMarkdown({
+  aggregateStatus: 'C',
+  coveredBy: ['//pkg/calculator:calculator_test'],
+  uncoveredBy: ['//pkg/calculator:calculator_test_alt'],
+});
+assert.match(hover, /\*\*Covered by\*\*/);
+assert.match(hover, /`\/\/pkg\/calculator:calculator_test`/);
+assert.doesNotMatch(hover, /calculator_test_alt/);
+assert.doesNotMatch(hover, /latest Please coverage run/);
+
+const boundedHover = coverageAttributionMarkdown({
+  aggregateStatus: 'C',
+  coveredBy: [
+    '//pkg:test_1',
+    '//pkg:test_2',
+    '//pkg:test_3',
+    '//pkg:test_4',
+    '//pkg:test_5',
+    '//pkg:test_6',
+    '//pkg:test_7',
+  ],
+  uncoveredBy: [],
+});
+assert.match(boundedHover, /2 additional targets omitted/);
+assert.doesNotMatch(boundedHover, /test_6/);
+
+assert.match(
+  coverageAttributionMarkdown({
+    aggregateStatus: 'U',
+    coveredBy: [],
+    uncoveredBy: [],
+  }),
+  /No Please targets/
 );
 
 console.log('Coverage attribution tests passed.');

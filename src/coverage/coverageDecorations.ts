@@ -3,6 +3,10 @@ import * as vscode from 'vscode';
 
 import * as plz from '../please';
 import {
+  coverageAttributionMarkdown,
+  coverageLineAttribution,
+} from './coverageAttribution';
+import {
   COVERED_LINE,
   coverageFilename,
   coverageLineNumbers,
@@ -17,6 +21,12 @@ export const COVERAGE_VISIBLE_CONTEXT = 'plz.coverageVisible';
 
 const COVERAGE_RESULTS_GLOB = '**/plz-out/log/coverage.json';
 const COVERAGE_RESULTS_LOAD_DELAY_MS = 200;
+
+interface DocumentCoverage {
+  filename: string;
+  lineStatuses: string;
+  results: CoverageResults;
+}
 
 /**
  * Watches Please coverage results and projects them into editor decorations,
@@ -77,7 +87,7 @@ export class CoverageDecorations implements vscode.Disposable {
   }
 
   public hasCoverageForDocument(document: vscode.TextDocument): boolean {
-    return this.lineStatusesForDocument(document) !== undefined;
+    return this.coverageForDocument(document) !== undefined;
   }
 
   public dispose(): void {
@@ -165,38 +175,42 @@ export class CoverageDecorations implements vscode.Disposable {
   }
 
   private applyToEditor(editor: vscode.TextEditor): void {
-    const lineStatuses = this.lineStatusesForDocument(editor.document);
+    const coverage = this.coverageForDocument(editor.document);
 
     editor.setDecorations(
       this.coveredDecoration,
-      this.decorationsForStatus(editor.document, lineStatuses, COVERED_LINE)
+      this.decorationsForStatus(editor.document, coverage, COVERED_LINE)
     );
     editor.setDecorations(
       this.uncoveredDecoration,
-      this.decorationsForStatus(editor.document, lineStatuses, UNCOVERED_LINE)
+      this.decorationsForStatus(editor.document, coverage, UNCOVERED_LINE)
     );
   }
 
   private decorationsForStatus(
     document: vscode.TextDocument,
-    lineStatuses: string | undefined,
+    coverage: DocumentCoverage | undefined,
     status: typeof COVERED_LINE | typeof UNCOVERED_LINE
   ): vscode.DecorationOptions[] {
-    if (!lineStatuses) {
+    if (!coverage) {
       return [];
     }
 
-    const hoverMessage =
-      status === COVERED_LINE
-        ? 'Covered by the latest Please coverage run.'
-        : 'Not covered by the latest Please coverage run.';
-
-    return coverageLineNumbers(lineStatuses, status)
+    return coverageLineNumbers(coverage.lineStatuses, status)
       .filter((lineNumber) => lineNumber < document.lineCount)
-      .map((lineNumber) => ({
-        range: new vscode.Range(lineNumber, 0, lineNumber, 0),
-        hoverMessage,
-      }));
+      .map((lineNumber) => {
+        const attribution = coverageLineAttribution(
+          coverage.results,
+          coverage.filename,
+          lineNumber
+        );
+        return {
+          range: new vscode.Range(lineNumber, 0, lineNumber, 0),
+          hoverMessage: new vscode.MarkdownString(
+            coverageAttributionMarkdown(attribution)
+          ),
+        };
+      });
   }
 
   private updateStatusBar(): void {
@@ -243,9 +257,9 @@ export class CoverageDecorations implements vscode.Disposable {
     this.statusBar.hide();
   }
 
-  private lineStatusesForDocument(
+  private coverageForDocument(
     document: vscode.TextDocument
-  ): string | undefined {
+  ): DocumentCoverage | undefined {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
     const results = workspaceFolder
       ? this.resultsByWorkspace.get(workspaceFolder.uri.fsPath)
@@ -253,7 +267,16 @@ export class CoverageDecorations implements vscode.Disposable {
     const filename = workspaceFolder
       ? coverageFilename(workspaceFolder.uri.fsPath, document.uri.fsPath)
       : undefined;
-    return filename ? results?.files[filename] : undefined;
+    const lineStatuses = filename ? results?.files[filename] : undefined;
+    return filename && lineStatuses && results
+      ? { filename, lineStatuses, results }
+      : undefined;
+  }
+
+  private lineStatusesForDocument(
+    document: vscode.TextDocument
+  ): string | undefined {
+    return this.coverageForDocument(document)?.lineStatuses;
   }
 }
 
