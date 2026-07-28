@@ -403,11 +403,16 @@ function buildCustomCodeLens(
     resolvedCommand = 'plz';
     const processedUserArgs = userArgs.map(replaceTarget);
     const containsTarget =
+      command.includes('${target}') ||
+      command.includes('$target') ||
       JSON.stringify(userArgs).includes('${target}') ||
       JSON.stringify(userArgs).includes('$target');
+      
+    const extraCommandArgs = parts.slice(2).map(p => replaceTarget(p) as string);
+
     const finalSubArgs = containsTarget
-      ? processedUserArgs
-      : [resolvedTarget, ...processedUserArgs];
+      ? [...extraCommandArgs, ...processedUserArgs]
+      : [...extraCommandArgs, resolvedTarget, ...processedUserArgs];
 
     const terminalFlag = lens.terminal !== undefined ? lens.terminal : lens.Terminal;
 
