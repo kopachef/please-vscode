@@ -47,14 +47,24 @@ export function coverageLineAttribution(
 export function coverageAttributionMarkdown(
   attribution: CoverageLineAttribution
 ): string {
-  const lines = ['**Covered by**'];
-  if (attribution.coveredBy.length === 0) {
-    lines.push('No Please targets.');
-  } else {
-    appendTargets(lines, attribution.coveredBy);
-  }
+  const lines: string[] = [];
+  appendTargetSection(lines, 'Covered by', attribution.coveredBy);
+  appendTargetSection(lines, 'Not covered by', attribution.uncoveredBy);
 
   return lines.join('\n\n');
+}
+
+function appendTargetSection(
+  lines: string[],
+  heading: string,
+  targets: string[]
+): void {
+  lines.push(`**${heading}**`);
+  if (targets.length === 0) {
+    lines.push('No Please targets.');
+  } else {
+    appendTargets(lines, targets);
+  }
 }
 
 function appendTargets(lines: string[], targets: string[]): void {

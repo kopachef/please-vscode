@@ -50,7 +50,8 @@ const hover = coverageAttributionMarkdown({
 });
 assert.match(hover, /\*\*Covered by\*\*/);
 assert.match(hover, /`\/\/pkg\/calculator:calculator_test`/);
-assert.doesNotMatch(hover, /calculator_test_alt/);
+assert.match(hover, /\*\*Not covered by\*\*/);
+assert.match(hover, /`\/\/pkg\/calculator:calculator_test_alt`/);
 assert.doesNotMatch(hover, /latest Please coverage run/);
 
 const boundedHover = coverageAttributionMarkdown({
@@ -73,9 +74,17 @@ assert.match(
   coverageAttributionMarkdown({
     aggregateStatus: 'U',
     coveredBy: [],
-    uncoveredBy: [],
+    uncoveredBy: ['//pkg/calculator:calculator_test'],
   }),
   /No Please targets/
+);
+assert.match(
+  coverageAttributionMarkdown({
+    aggregateStatus: 'U',
+    coveredBy: [],
+    uncoveredBy: ['//pkg/calculator:calculator_test'],
+  }),
+  /`\/\/pkg\/calculator:calculator_test`/
 );
 
 console.log('Coverage attribution tests passed.');
