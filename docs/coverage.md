@@ -91,14 +91,15 @@ line:
 
 The `tests` object contains per-target results. The `files` object contains the
 aggregated result used for editor annotations. The extension parses both so
-that coverage evidence can be attributed to deterministic target labels, but
-it does not yet display that attribution in the editor.
+that line coverage can be attributed to deterministic target labels in the
+editor.
 
 ## Editor presentation
 
 - Covered lines receive a green background and overview-ruler marker.
 - Uncovered lines receive a red background and overview-ruler marker.
-- Hovering a highlighted line lists the Please targets that covered it.
+- Hovering a highlighted line lists the Please targets that covered it and
+  those that reported it as uncovered.
 - The status bar shows coverage for the active file, or overall coverage when
   only a workspace summary is available.
 - A `[clear]` CodeLens appears while the active document has coverage.
