@@ -90,9 +90,9 @@ line:
 | `N`    | Non-coverable line |
 
 The `tests` object contains per-target results. The `files` object contains the
-aggregated result used for editor annotations. The extension currently reads
-the aggregated file data and the overall percentage; it does not yet display
-per-target attribution.
+aggregated result used for editor annotations. The extension parses both so
+that coverage evidence can be attributed to deterministic target labels, but
+it does not yet display that attribution in the editor.
 
 ## Editor presentation
 
@@ -122,7 +122,7 @@ report, and restarting the extension reloads an existing report.
   branch, condition, path, or mutation coverage.
 - Compound boolean expressions cannot be evaluated for missing truth-table
   combinations from line coverage alone.
-- Per-target results in the `tests` object are not yet shown in the editor.
+- Parsed per-target results are not yet shown in the editor.
 - Coverage depends on the files and statuses produced by Please and the
   language-specific coverage implementation.
 - Only directly associated test targets are selected automatically.
@@ -160,6 +160,7 @@ Coverage is divided into focused modules:
 
 | Module                                    | Responsibility                                         |
 | ----------------------------------------- | ------------------------------------------------------ |
+| `src/coverage/coverageAttribution.ts`     | Map source lines to deterministic per-target evidence  |
 | `src/coverage/coverageResults.ts`         | Parse reports and calculate line/file summaries        |
 | `src/coverage/coverageTargetSelection.ts` | Filter coverable Please test targets                   |
 | `src/coverage/coverageTargets.ts`         | Resolve source and test files to coverage targets      |
@@ -174,4 +175,4 @@ npm test
 ```
 
 The test command compiles the extension before running coverage parsing,
-selection, and invocation tests.
+attribution, selection, and invocation tests.

@@ -3,12 +3,17 @@ import * as path from 'path';
 export const COVERED_LINE = 'C';
 export const UNCOVERED_LINE = 'U';
 
+export interface CoverageFiles {
+  [filename: string]: string;
+}
+
 export interface CoverageResults {
   /**
    * Status strings are indexed by zero-based source line. `C` marks a covered
    * line, `U` an uncovered line, and other values are not coverable.
    */
-  files: { [filename: string]: string };
+  files: CoverageFiles;
+  tests: { [target: string]: CoverageFiles };
   totalCoverage?: number;
 }
 
@@ -19,21 +24,30 @@ export interface CoverageSummary {
   percentage: number;
 }
 
-/** Parses the subset of Please's coverage.json consumed by the extension. */
+/** Parses the coverage.json data used by presentation and audit features. */
 export function parseCoverageResults(contents: string): CoverageResults {
   const value = JSON.parse(contents);
   if (!isRecord(value) || !isRecord(value.files)) {
     throw new Error('Coverage results must contain a files object.');
   }
 
-  const files: { [filename: string]: string } = {};
-  for (const [filename, lineStatuses] of Object.entries(value.files)) {
-    if (typeof lineStatuses !== 'string') {
-      throw new Error(
-        `Coverage line statuses for '${filename}' must be a string.`
+  const files = parseCoverageFiles(value.files, 'Coverage');
+  const tests: { [target: string]: CoverageFiles } = {};
+  if (value.tests !== undefined) {
+    if (!isRecord(value.tests)) {
+      throw new Error('Coverage results tests must be an object.');
+    }
+    for (const [target, targetFiles] of Object.entries(value.tests)) {
+      if (!isRecord(targetFiles)) {
+        throw new Error(
+          `Coverage results for test target '${target}' must be an object.`
+        );
+      }
+      tests[target] = parseCoverageFiles(
+        targetFiles,
+        `Coverage for test target '${target}'`
       );
     }
-    files[filename] = lineStatuses;
   }
 
   const totalCoverage =
@@ -41,7 +55,23 @@ export function parseCoverageResults(contents: string): CoverageResults {
       ? value.stats.total_coverage
       : undefined;
 
-  return { files, totalCoverage };
+  return { files, tests, totalCoverage };
+}
+
+function parseCoverageFiles(
+  value: { [key: string]: unknown },
+  context: string
+): CoverageFiles {
+  const files: CoverageFiles = {};
+  for (const [filename, lineStatuses] of Object.entries(value)) {
+    if (typeof lineStatuses !== 'string') {
+      throw new Error(
+        `${context} line statuses for '${filename}' must be a string.`
+      );
+    }
+    files[filename] = lineStatuses;
+  }
+  return files;
 }
 
 /** Returns zero-based editor line numbers with the requested coverage status. */

@@ -11,6 +11,11 @@ const {
 
 const results = parseCoverageResults(
   JSON.stringify({
+    tests: {
+      '//services/diagnostics:diagnostics_test': {
+        'services/diagnostics/diagnostics.go': 'NCCUUN',
+      },
+    },
     files: {
       'services/diagnostics/diagnostics.go': 'NCCUUN',
     },
@@ -21,6 +26,11 @@ const results = parseCoverageResults(
 );
 
 assert.deepStrictEqual(results, {
+  tests: {
+    '//services/diagnostics:diagnostics_test': {
+      'services/diagnostics/diagnostics.go': 'NCCUUN',
+    },
+  },
   files: {
     'services/diagnostics/diagnostics.go': 'NCCUUN',
   },
@@ -71,6 +81,22 @@ assert.throws(
       })
     ),
   /must be a string/
+);
+assert.throws(
+  () => parseCoverageResults(JSON.stringify({ files: {}, tests: [] })),
+  /tests must be an object/
+);
+assert.throws(
+  () =>
+    parseCoverageResults(
+      JSON.stringify({
+        files: {},
+        tests: {
+          '//services/diagnostics:diagnostics_test': true,
+        },
+      })
+    ),
+  /test target.*must be an object/
 );
 
 console.log('Coverage result tests passed.');
