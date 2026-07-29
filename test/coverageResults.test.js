@@ -5,6 +5,7 @@ const {
   coverageFilename,
   coverageLineNumbers,
   coverageSummary,
+  mergeCoverageResults,
   parseCoverageResults,
   UNCOVERED_LINE,
 } = require('../out/src/coverage/coverageResults');
@@ -66,6 +67,47 @@ assert.strictEqual(
 assert.strictEqual(
   coverageFilename('/repo', '/another-repo/diagnostics.go'),
   undefined
+);
+assert.deepStrictEqual(
+  mergeCoverageResults([
+    {
+      files: {
+        'pkg/calculator.go': 'NCUN',
+        'pkg/first.go': 'CU',
+      },
+      tests: {
+        '//pkg:first_test': {
+          'pkg/calculator.go': 'NCUN',
+        },
+      },
+    },
+    {
+      files: {
+        'pkg/calculator.go': 'NUCN',
+        'pkg/second.go': 'UC',
+      },
+      tests: {
+        '//pkg:second_test': {
+          'pkg/calculator.go': 'NUCN',
+        },
+      },
+    },
+  ]),
+  {
+    files: {
+      'pkg/calculator.go': 'NCCN',
+      'pkg/first.go': 'CU',
+      'pkg/second.go': 'UC',
+    },
+    tests: {
+      '//pkg:first_test': {
+        'pkg/calculator.go': 'NCUN',
+      },
+      '//pkg:second_test': {
+        'pkg/calculator.go': 'NUCN',
+      },
+    },
+  }
 );
 assert.throws(
   () => parseCoverageResults(JSON.stringify({ files: [] })),

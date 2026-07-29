@@ -33,6 +33,7 @@ interface DocumentCoverage {
  * status-bar summaries, and CodeLens refresh events.
  */
 export class CoverageDecorations implements vscode.Disposable {
+  private active = true;
   private readonly coverageChanged = new vscode.EventEmitter<void>();
   private readonly resultsByWorkspace = new Map<string, CoverageResults>();
   private readonly pendingLoads = new Map<string, NodeJS.Timeout>();
@@ -86,8 +87,24 @@ export class CoverageDecorations implements vscode.Disposable {
     this.refreshCoverageUi();
   }
 
+  /** Shows the extension's custom decorations for CodeLens coverage runs. */
+  public activate(): void {
+    if (!this.active) {
+      this.active = true;
+      this.refreshCoverageUi();
+    }
+  }
+
+  /** Hides custom decorations while VS Code presents native test coverage. */
+  public deactivate(): void {
+    if (this.active) {
+      this.active = false;
+      this.refreshCoverageUi();
+    }
+  }
+
   public hasCoverageForDocument(document: vscode.TextDocument): boolean {
-    return this.coverageForDocument(document) !== undefined;
+    return this.active && this.coverageForDocument(document) !== undefined;
   }
 
   public dispose(): void {
@@ -214,6 +231,16 @@ export class CoverageDecorations implements vscode.Disposable {
   }
 
   private updateStatusBar(): void {
+    if (!this.active) {
+      void vscode.commands.executeCommand(
+        'setContext',
+        COVERAGE_VISIBLE_CONTEXT,
+        false
+      );
+      this.statusBar.hide();
+      return;
+    }
+
     const editor = vscode.window.activeTextEditor;
     const workspaceFolder = editor
       ? vscode.workspace.getWorkspaceFolder(editor.document.uri)
@@ -260,6 +287,10 @@ export class CoverageDecorations implements vscode.Disposable {
   private coverageForDocument(
     document: vscode.TextDocument
   ): DocumentCoverage | undefined {
+    if (!this.active) {
+      return undefined;
+    }
+
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
     const results = workspaceFolder
       ? this.resultsByWorkspace.get(workspaceFolder.uri.fsPath)

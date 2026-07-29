@@ -24,6 +24,34 @@ export interface CoverageSummary {
   percentage: number;
 }
 
+/**
+ * Combines coverage from separate Please invocations. A line covered by any
+ * invocation is covered in the aggregate; otherwise a coverable line remains
+ * uncovered.
+ */
+export function mergeCoverageResults(
+  results: readonly CoverageResults[]
+): CoverageResults {
+  const files = mergeCoverageFileSets(results.map((result) => result.files));
+  const targetNames = new Set<string>();
+  for (const result of results) {
+    for (const target of Object.keys(result.tests)) {
+      targetNames.add(target);
+    }
+  }
+  const tests: { [target: string]: CoverageFiles } = {};
+
+  for (const target of targetNames) {
+    tests[target] = mergeCoverageFileSets(
+      results
+        .map((result) => result.tests[target])
+        .filter((targetFiles): targetFiles is CoverageFiles => !!targetFiles)
+    );
+  }
+
+  return { files, tests };
+}
+
 /** Parses the coverage.json data used by presentation and audit features. */
 export function parseCoverageResults(contents: string): CoverageResults {
   const value = JSON.parse(contents);
@@ -108,6 +136,49 @@ export function coverageSummary(lineStatuses: string): CoverageSummary {
     coverable,
     percentage: coverable === 0 ? 0 : (covered / coverable) * 100,
   };
+}
+
+function mergeCoverageFileSets(
+  fileSets: readonly CoverageFiles[]
+): CoverageFiles {
+  const filenames = new Set<string>();
+  for (const fileSet of fileSets) {
+    for (const filename of Object.keys(fileSet)) {
+      filenames.add(filename);
+    }
+  }
+  const files: CoverageFiles = {};
+
+  for (const filename of filenames) {
+    files[filename] = mergeLineStatuses(
+      fileSets
+        .map((fileSet) => fileSet[filename])
+        .filter((lineStatuses): lineStatuses is string => !!lineStatuses)
+    );
+  }
+  return files;
+}
+
+function mergeLineStatuses(lineStatuses: readonly string[]): string {
+  const lineCount = Math.max(
+    0,
+    ...lineStatuses.map((statuses) => statuses.length)
+  );
+  let merged = '';
+
+  for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
+    const statuses = lineStatuses
+      .map((coverage) => coverage[lineNumber])
+      .filter((status): status is string => status !== undefined);
+    if (statuses.includes(COVERED_LINE)) {
+      merged += COVERED_LINE;
+    } else if (statuses.includes(UNCOVERED_LINE)) {
+      merged += UNCOVERED_LINE;
+    } else {
+      merged += statuses[0] ?? 'N';
+    }
+  }
+  return merged;
 }
 
 /** Converts an absolute workspace file path to a coverage.json file key. */
