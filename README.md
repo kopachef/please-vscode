@@ -17,6 +17,20 @@ By default, the extension aggregates all eligible test targets. Use
 See [Coverage](docs/coverage.md) for supported files, result semantics,
 troubleshooting, and contributor information.
 
+## Test Explorer
+
+Open VS Code's Testing view to browse Go `_test.go` files, their applicable
+Please test targets, and the individual Go tests within each target. Test
+targets and functions are resolved lazily when a file is expanded.
+
+The Test Explorer provides Run, Debug, and Coverage profiles. **Run Tests with
+Coverage** executes the selected Please targets and publishes line coverage to
+VS Code's native Test Coverage view.
+
+Discovering individual Go tests requires a Go document-symbol provider,
+normally the official Go extension with `gopls`; whole Please targets can still
+be run when individual symbols are unavailable.
+
 ## Debugging
 
 ### Go language requirements

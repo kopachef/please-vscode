@@ -15,6 +15,29 @@ Targets marked `no_test_coverage` are not selected for coverage.
 
 ## Running coverage
 
+### Test Explorer coverage
+
+Open VS Code's Testing view and select **Run Tests with Coverage** for the
+workspace or a Please target. The extension runs `plz cover` and publishes the
+resulting line coverage to VS Code's native Test Coverage view.
+
+Native coverage supports:
+
+- File and folder coverage percentages in the Test Coverage view.
+- Covered and uncovered line indicators in editors.
+- Running coverage for selected Please targets.
+- Merging results when a selection requires multiple Please invocations.
+
+Please reports whether a coverable line was covered, but not how many times it
+executed. Native coverage therefore displays binary execution information for
+each line.
+
+Native coverage is target-scoped. Please currently appends focused Go test
+arguments to the coverage post-processing command as well as the test binary,
+which causes `go tool covdata` to reject the extra argument. Individual Go
+functions therefore retain Run and Debug actions but do not offer the native
+Coverage action.
+
 ### Aggregate coverage
 
 Use the `plz cover` CodeLens at the top of a supported file. The primary action
@@ -96,6 +119,10 @@ editor.
 
 ## Editor presentation
 
+Coverage started from Test Explorer uses VS Code's native coverage
+presentation. Coverage started from a CodeLens or the focused-target command
+continues to use the extension's custom presentation:
+
 - Covered lines receive a green background and overview-ruler marker.
 - Uncovered lines receive a red background and overview-ruler marker.
 - Hovering a highlighted line lists the Please targets that covered it and
@@ -117,10 +144,15 @@ Clearing coverage removes the report from the extension's in-memory view. It
 does not delete `plz-out/log/coverage.json`. A later coverage run reloads the
 report, and restarting the extension reloads an existing report.
 
+Native Test Explorer coverage is controlled by VS Code. Use the coverage
+toolbar or Testing view actions to hide or replace its visuals.
+
 ## Current limitations
 
 - Coverage is line-based. The extension does not currently report AST-node,
   branch, condition, path, or mutation coverage.
+- Please's line-status report does not include execution counts, so native
+  coverage records covered lines as executed without an exact count.
 - Compound boolean expressions cannot be evaluated for missing truth-table
   combinations from line coverage alone.
 - Target attribution is shown for individual highlighted lines, but there is no
@@ -136,8 +168,9 @@ report, and restarting the extension reloads an existing report.
 - Confirm the workspace contains `.plzconfig`.
 - Confirm `editor.codeLens` is enabled.
 - Confirm the file matches one of the supported file patterns.
-- For Go test-function CodeLenses, confirm Go Outline is installed. The
-  file-level coverage action remains available without function discovery.
+- For per-function Go test and debug CodeLenses, confirm Go Outline is
+  installed. File-level test, debug, and coverage actions remain available
+  without function discovery.
 
 ### No coverage target is found
 
