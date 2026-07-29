@@ -24,6 +24,7 @@ import { PythonDebugAdapterDescriptorProvider } from './languages/python/debugAd
 import { registerPythonTestCodeLensProvider } from './languages/python/codeLensProvider';
 import { PythonDebugConfigurationProvider } from './languages/python/debugConfigurationProvider';
 import * as plz from './please';
+import { PleaseTestController } from './testing/pleaseTestController';
 import { getBinPath } from './utils/pathUtils';
 
 // This gets activated only if the workspace contains a `.plzconfig` file.
@@ -48,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
     coverageDecorations,
     registerCoverageCommands(coverageDecorations)
   );
+  context.subscriptions.push(new PleaseTestController(coverageDecorations));
 
   // Setup Go debugging
   try {

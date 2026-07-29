@@ -16,7 +16,8 @@
   "publisher": "please-build",
   "categories": [
     "Programming Languages",
-    "Debuggers"
+    "Debuggers",
+    "Testing"
   ],
   "keywords": [],
   "engines": {
