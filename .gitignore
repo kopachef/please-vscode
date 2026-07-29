@@ -1,5 +1,6 @@
 plz-out
 out
 node_modules
+pkg/
 *.vsix
 .env
