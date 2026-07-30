@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import * as plz from '../../please';
 import { getBinPathUsingConfig } from '../../utils';
 import { documentSymbols } from './goOutline';
 
@@ -8,6 +9,18 @@ const TEST_METHOD_REGEX = /^\(([^)]+)\)\.(Test\P{Ll}.*)$/u;
 
 export class GoTestCodeLensProvider implements vscode.CodeLensProvider {
   private goOutlineNotFoundMessageShown = false;
+
+  private static _onDidChangeCodeLenses = new vscode.EventEmitter<void>();
+  public readonly onDidChangeCodeLenses = GoTestCodeLensProvider._onDidChangeCodeLenses.event;
+
+  public static activeMode: 'test' | 'debug' = 'test';
+
+  public static setMode(mode: 'test' | 'debug') {
+    if (this.activeMode !== mode) {
+      this.activeMode = mode;
+      this._onDidChangeCodeLenses.fire();
+    }
+  }
 
   public async provideCodeLenses(
     document: vscode.TextDocument,
@@ -45,18 +58,11 @@ export class GoTestCodeLensProvider implements vscode.CodeLensProvider {
       return [];
     }
 
-    let codeLens: vscode.CodeLens[] = [
-      new vscode.CodeLens(pkg.range, {
-        title: 'plz test',
-        command: 'plz.test.document',
-        arguments: [{ document }],
-      }),
-      new vscode.CodeLens(pkg.range, {
-        title: 'plz debug',
-        command: 'plz.debug.document',
-        arguments: [{ document, language: 'go' }],
-      }),
-    ];
+    const targets = plz.inputTargets(document.fileName);
+    let codeLens: vscode.CodeLens[] = [];
+
+    // Add lenses for package level
+    codeLens.push(...buildLenses(pkg.range, targets, document));
 
     const testFunctions = pkg.children.filter(
       (sym) =>
@@ -65,24 +71,66 @@ export class GoTestCodeLensProvider implements vscode.CodeLensProvider {
     );
     for (const fn of testFunctions) {
       const functionName = extractTestName(fn.name);
-
-      codeLens = [
-        ...codeLens,
-        new vscode.CodeLens(fn.range, {
-          title: 'plz test',
-          command: 'plz.test.document',
-          arguments: [{ document, functionName }],
-        }),
-        new vscode.CodeLens(fn.range, {
-          title: 'plz debug',
-          command: 'plz.debug.document',
-          arguments: [{ document, functionName, language: 'go' }],
-        }),
-      ];
+      // Add lenses for function level
+      codeLens.push(...buildLenses(fn.range, targets, document, functionName));
     }
 
     return codeLens;
   }
+}
+
+function buildLenses(
+  range: vscode.Range,
+  targets: string[],
+  document: vscode.TextDocument,
+  functionName?: string
+): vscode.CodeLens[] {
+  const lenses: vscode.CodeLens[] = [];
+  const activeMode = GoTestCodeLensProvider.activeMode;
+
+  // 1. Mode selector: test
+  lenses.push(
+    new vscode.CodeLens(range, {
+      title: activeMode === 'test' ? '✔ test' : 'test',
+      command: 'plz.setMode',
+      arguments: ['test'],
+    })
+  );
+
+  // 2. Mode selector: debug
+  lenses.push(
+    new vscode.CodeLens(range, {
+      title: activeMode === 'debug' ? '✔ debug' : 'debug',
+      command: 'plz.setMode',
+      arguments: ['debug'],
+    })
+  );
+
+  // 3. Targets
+  for (const target of targets) {
+    const colonIndex = target.indexOf(':');
+    const targetName = colonIndex !== -1 ? target.substring(colonIndex + 1) : target;
+
+    if (activeMode === 'test') {
+      lenses.push(
+        new vscode.CodeLens(range, {
+          title: targetName,
+          command: 'plz.test.document',
+          arguments: [{ document, functionName, target }],
+        })
+      );
+    } else {
+      lenses.push(
+        new vscode.CodeLens(range, {
+          title: targetName,
+          command: 'plz.debug.document',
+          arguments: [{ document, functionName, language: 'go', target }],
+        })
+      );
+    }
+  }
+
+  return lenses;
 }
 
 function extractTestName(symbolName: string): string {

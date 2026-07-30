@@ -116,6 +116,11 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('plz', plzCommand)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('plz.setMode', (mode: 'test' | 'debug') => {
+      GoTestCodeLensProvider.setMode(mode);
+    })
+  );
 
   // Set up BUILD file codelenses
   context.subscriptions.push(

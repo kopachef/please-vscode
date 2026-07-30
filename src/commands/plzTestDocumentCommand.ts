@@ -5,14 +5,16 @@ import { retrieveInputFileTarget } from './utils';
 export async function plzTestDocumentCommand(args: {
   document: vscode.TextDocument;
   functionName?: string;
+  target?: string;
 }): Promise<void> {
   try {
     const {
       document: { fileName },
       functionName,
+      target: passedTarget,
     } = args;
 
-    const target = await retrieveInputFileTarget(fileName);
+    const target = passedTarget ?? await retrieveInputFileTarget(fileName);
     if (target === undefined) {
       return;
     }
