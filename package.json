@@ -16,17 +16,44 @@
   "publisher": "please-build",
   "categories": [
     "Programming Languages",
-    "Debuggers"
+    "Debuggers",
+    "Testing"
   ],
   "keywords": [],
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.88.0"
   },
   "activationEvents": [
     "workspaceContains:.plzconfig"
   ],
   "main": "./out/src/main",
   "contributes": {
+    "commands": [
+      {
+        "command": "plz.coverage.clear",
+        "title": "Clear Coverage",
+        "category": "Please"
+      },
+      {
+        "command": "plz.coverage.selectDocumentTarget",
+        "title": "Cover Current File with Target...",
+        "category": "Please"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "plz.coverage.clear",
+          "when": "plz.coverageVisible",
+          "group": "navigation@100"
+        },
+        {
+          "command": "plz.coverage.selectDocumentTarget",
+          "when": "editorLangId == go || editorLangId == python",
+          "group": "navigation@101"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "properties": {
@@ -190,6 +217,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -b && cp -R scripts/ out/",
+    "test": "npm run compile && node test/coverageResults.test.js && node test/coverageTargets.test.js && node test/coverageInvocation.test.js && node test/coverageAttribution.test.js && node test/pleaseTestModel.test.js",
     "watch": "tsc -b -w",
     "prettify": "prettier --write ."
   },
@@ -206,7 +234,7 @@
   "devDependencies": {
     "@types/node": "^15.0.1",
     "@types/semver": "^7.3.5",
-    "@types/vscode": "^1.52.0",
+    "@types/vscode": "1.88.0",
     "prettier": "2.3.0",
     "typescript": "^4.2.4"
   }

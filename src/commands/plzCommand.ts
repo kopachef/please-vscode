@@ -1,3 +1,5 @@
+import { ChildProcessWithoutNullStreams } qfrom 'child_process';
+
 import * as vscode from 'vscode';
 import * as plz from '../please';
 
@@ -7,7 +9,7 @@ export async function plzCommand(args: {
   command: string;
   args?: string[];
   runtime?: boolean;
-}): Promise<void> {
+}): Promise<ChildProcessWithoutNullStreams | undefined> {
   const { command, args: commandArgs = [], runtime = false } = args;
 
   let runtimeArgs: string | undefined;
@@ -26,6 +28,7 @@ export async function plzCommand(args: {
     wholeCommand = [...wholeCommand, '--', ...runtimeArgs.split(' ')];
   }
 
+  return plz.detachCommand(wholeCommand);
   const useTerminal = vscode.workspace
     .getConfiguration('please')
     .get<boolean>('runInTerminal', false);

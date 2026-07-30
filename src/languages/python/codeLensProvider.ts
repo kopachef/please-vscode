@@ -2,6 +2,10 @@ import { execFile } from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import {
+  CLEAR_COVERAGE_COMMAND,
+  CoverageDecorations,
+} from '../../coverage/coverageDecorations';
 import * as plz from '../../please';
 import { getBinPath } from '../../utils/pathUtils';
 
@@ -14,8 +18,26 @@ interface TestFunctionLocation {
 // Good enough heuristic.
 const PYTHON_TEST_FILENAME_REGEX = /^(test_.+|.+_test)\.py$/;
 
-export class PythonTestCodeLensProvider implements vscode.CodeLensProvider {
+export class PythonTestCodeLensProvider
+  implements vscode.CodeLensProvider, vscode.Disposable
+{
   private python3NotFoundMessageShown = false;
+  private readonly coverageChangeListener: vscode.Disposable;
+  private readonly codeLensesChanged = new vscode.EventEmitter<void>();
+
+  public readonly onDidChangeCodeLenses = this.codeLensesChanged.event;
+
+  constructor(private readonly coverageDecorations: CoverageDecorations) {
+    // `[clear]` is visible only while this document has coverage results.
+    this.coverageChangeListener = coverageDecorations.onDidChangeCoverage(() =>
+      this.codeLensesChanged.fire()
+    );
+  }
+
+  public dispose(): void {
+    this.coverageChangeListener.dispose();
+    this.codeLensesChanged.dispose();
+  }
 
   public async provideCodeLenses(
     document: vscode.TextDocument,
@@ -51,7 +73,7 @@ export class PythonTestCodeLensProvider implements vscode.CodeLensProvider {
       plz.outputChannel.appendLine(
         `Error placing codelenses on '${document.fileName}': ${e.message}`
       );
-      return;
+      return [];
     }
 
     const firstLineRange = new vscode.Range(
@@ -66,10 +88,16 @@ export class PythonTestCodeLensProvider implements vscode.CodeLensProvider {
         arguments: [{ document }],
       }),
       new vscode.CodeLens(firstLineRange, {
+        title: 'plz cover',
+        command: 'plz.cover.document',
+        arguments: [{ document }],
+      }),
+      new vscode.CodeLens(firstLineRange, {
         title: 'plz debug',
         command: 'plz.debug.document',
         arguments: [{ document, language: 'python' }],
       }),
+      ...this.clearCoverageCodeLenses(document, firstLineRange),
     ];
 
     for (const testFunctionLocation of testFunctionLocations) {
@@ -101,6 +129,34 @@ export class PythonTestCodeLensProvider implements vscode.CodeLensProvider {
 
     return codeLens;
   }
+
+  private clearCoverageCodeLenses(
+    document: vscode.TextDocument,
+    range: vscode.Range
+  ): vscode.CodeLens[] {
+    if (!this.coverageDecorations.hasCoverageForDocument(document)) {
+      return [];
+    }
+    return [
+      new vscode.CodeLens(range, {
+        title: '[clear]',
+        command: CLEAR_COVERAGE_COMMAND,
+      }),
+    ];
+  }
+}
+
+export function registerPythonTestCodeLensProvider(
+  coverageDecorations: CoverageDecorations
+): vscode.Disposable {
+  const provider = new PythonTestCodeLensProvider(coverageDecorations);
+  return vscode.Disposable.from(
+    provider,
+    vscode.languages.registerCodeLensProvider(
+      { language: 'python', scheme: 'file' },
+      provider
+    )
+  );
 }
 
 async function getTextFunctions(

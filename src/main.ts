@@ -4,19 +4,27 @@ import * as vscode from 'vscode';
 import {
   clipboardWriteCommand,
   plzCommand,
+  plzCoverActiveDocumentWithTargetCommand,
+  plzCoverDocumentCommand,
   plzDebugDocumentCommand,
   plzDebugTargetCommand,
   plzTestDocumentCommand,
+  SELECT_COVERAGE_TARGET_COMMAND,
 } from './commands';
+import {
+  CoverageDecorations,
+  registerCoverageCommands,
+} from './coverage/coverageDecorations';
 import { startLanguageClient } from './languageClient';
 import { LANGUAGE_DEBUG_IDS } from './languages/constants';
-import { GoTestCodeLensProvider } from './languages/go/codeLensProvider';
+import { registerGoTestCodeLensProvider } from './languages/go/codeLensProvider';
 import { GoDebugConfigurationProvider } from './languages/go/debugConfigurationProvider';
 import { BuildFileCodeLensProvider } from './languages/plz/codeLensProvider';
 import { PythonDebugAdapterDescriptorProvider } from './languages/python/debugAdapterDescriptorFactory';
-import { PythonTestCodeLensProvider } from './languages/python/codeLensProvider';
+import { registerPythonTestCodeLensProvider } from './languages/python/codeLensProvider';
 import { PythonDebugConfigurationProvider } from './languages/python/debugConfigurationProvider';
 import * as plz from './please';
+import { PleaseTestController } from './testing/pleaseTestController';
 import { getBinPath } from './utils/pathUtils';
 
 // This gets activated only if the workspace contains a `.plzconfig` file.
@@ -35,6 +43,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Load Go env variables
   loadGoEnv();
+
+  const coverageDecorations = new CoverageDecorations();
+  context.subscriptions.push(
+    coverageDecorations,
+    registerCoverageCommands(coverageDecorations)
+  );
+  context.subscriptions.push(new PleaseTestController(coverageDecorations));
 
   // Setup Go debugging
   try {
@@ -56,10 +71,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     // Setup Go codelenses
     context.subscriptions.push(
-      vscode.languages.registerCodeLensProvider(
-        { language: 'go', scheme: 'file' },
-        new GoTestCodeLensProvider()
-      )
+      registerGoTestCodeLensProvider(coverageDecorations)
     );
   } catch (e) {
     vscode.window.showWarningMessage(e.message);
@@ -91,10 +103,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     // Setup Python codelenses
     context.subscriptions.push(
-      vscode.languages.registerCodeLensProvider(
-        { language: 'python', scheme: 'file' },
-        new PythonTestCodeLensProvider()
-      )
+      registerPythonTestCodeLensProvider(coverageDecorations)
     );
   } catch (e) {
     vscode.window.showWarningMessage(e.message);
@@ -103,6 +112,24 @@ export async function activate(context: vscode.ExtensionContext) {
   // Setup plz-related commands
   context.subscriptions.push(
     vscode.commands.registerCommand('plz.test.document', plzTestDocumentCommand)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('plz.cover.document', async (args) => {
+      coverageDecorations.activate();
+
+      const process = await plzCoverDocumentCommand(args);
+      process?.once('close', (code) => {
+        if (code === 0) {
+          void coverageDecorations.loadForDocument(args.document);
+        }
+      });
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      SELECT_COVERAGE_TARGET_COMMAND,
+      plzCoverActiveDocumentWithTargetCommand
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand(
