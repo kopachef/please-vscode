@@ -180,9 +180,7 @@ export class CoverageDecorations implements vscode.Disposable {
       const contents = await fs.readFile(uri.fsPath, 'utf8');
       const results = parseCoverageResults(contents);
       const workspaceKey = workspaceFolder.uri.fsPath;
-      const cumulative = vscode.workspace
-        .getConfiguration('please', uri)
-        .get<boolean>(CUMULATIVE_COVERAGE_SETTING, false);
+      const cumulative = this.cumulativeCoverageEnabled(uri);
       this.resultsByWorkspace.set(
         workspaceKey,
         cumulative
@@ -206,8 +204,21 @@ export class CoverageDecorations implements vscode.Disposable {
       return;
     }
 
+    // Cumulative results are session state. Please removes coverage.json while
+    // starting the next coverage command, so only the explicit clear action
+    // should discard earlier targets in this mode.
+    if (this.cumulativeCoverageEnabled(uri)) {
+      return;
+    }
+
     this.resultsByWorkspace.delete(workspaceFolder.uri.fsPath);
     this.refreshCoverageUi();
+  }
+
+  private cumulativeCoverageEnabled(uri: vscode.Uri): boolean {
+    return vscode.workspace
+      .getConfiguration('please', uri)
+      .get<boolean>(CUMULATIVE_COVERAGE_SETTING, false);
   }
 
   private refreshCoverageUi(): void {

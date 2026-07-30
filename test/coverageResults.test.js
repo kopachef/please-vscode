@@ -152,6 +152,46 @@ assert.deepStrictEqual(
   accumulateCoverageResults(
     {
       files: {
+        'shared/branch.go': 'NNCCCCU',
+      },
+      tests: {
+        '//first:first_test': {
+          'shared/branch.go': 'NNCCCCU',
+        },
+      },
+      totalCoverage: 80,
+    },
+    {
+      files: {
+        'shared/branch.go': 'NNCUUUC',
+      },
+      tests: {
+        '//second:second_test': {
+          'shared/branch.go': 'NNCUUUC',
+        },
+      },
+      totalCoverage: 40,
+    }
+  ),
+  {
+    files: {
+      'shared/branch.go': 'NNCCCCC',
+    },
+    tests: {
+      '//first:first_test': {
+        'shared/branch.go': 'NNCCCCU',
+      },
+      '//second:second_test': {
+        'shared/branch.go': 'NNCUUUC',
+      },
+    },
+    totalCoverage: 100,
+  }
+);
+assert.deepStrictEqual(
+  accumulateCoverageResults(
+    {
+      files: {
         'pkg/calculator.go': 'NCUN',
       },
       tests: {
