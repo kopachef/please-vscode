@@ -23,7 +23,11 @@
     "vscode": "^1.52.0"
   },
   "activationEvents": [
-    "workspaceContains:.plzconfig"
+    "workspaceContains:.plzconfig",
+    "onDebugDynamicConfigurations:plz-go",
+    "onDebugDynamicConfigurations:plz-python",
+    "onDebugInitialConfigurations:plz-go",
+    "onDebugInitialConfigurations:plz-python"
   ],
   "main": "./out/src/main",
   "contributes": {
@@ -31,6 +35,31 @@
       {
         "command": "plz.coverage.clear",
         "title": "Clear Coverage",
+        "category": "Please"
+      },
+      {
+        "command": "plz.test.document",
+        "title": "Please Test File",
+        "category": "Please"
+      },
+      {
+        "command": "plz.cover.document",
+        "title": "Please Cover File",
+        "category": "Please"
+      },
+      {
+        "command": "plz.debug.document",
+        "title": "Please Debug File",
+        "category": "Please"
+      },
+      {
+        "command": "plz.debug.target",
+        "title": "Please Debug Target",
+        "category": "Please"
+      },
+      {
+        "command": "plz",
+        "title": "Please Run",
         "category": "Please"
       }
     ],
