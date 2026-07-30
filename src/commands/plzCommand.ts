@@ -1,5 +1,6 @@
-import { ChildProcessWithoutNullStreams } from 'child_process';
+import { ChildProcessWithoutNullStreams } qfrom 'child_process';
 
+import * as vscode from 'vscode';
 import * as plz from '../please';
 
 import { argumentPrompt } from './utils';
@@ -28,4 +29,16 @@ export async function plzCommand(args: {
   }
 
   return plz.detachCommand(wholeCommand);
+  const useTerminal = vscode.workspace
+    .getConfiguration('please')
+    .get<boolean>('runInTerminal', false);
+
+  if (useTerminal) {
+    plz.runInTerminal(wholeCommand);
+    return;
+  }
+  
+  plz.detachCommand(wholeCommand);
+
 }
+
