@@ -67,7 +67,8 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.debug.registerDebugConfigurationProvider(
         LANGUAGE_DEBUG_IDS.go,
-        new GoDebugConfigurationProvider()
+        new GoDebugConfigurationProvider(),
+        vscode.DebugConfigurationProviderTriggerKind.Dynamic
       )
     );
     // Setup Go codelenses
@@ -104,7 +105,8 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.debug.registerDebugConfigurationProvider(
         LANGUAGE_DEBUG_IDS.python,
-        new PythonDebugConfigurationProvider()
+        new PythonDebugConfigurationProvider(),
+        vscode.DebugConfigurationProviderTriggerKind.Dynamic
       )
     );
     context.subscriptions.push(

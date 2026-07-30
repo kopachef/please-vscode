@@ -21,6 +21,19 @@ import { debugStopOnEntryMode } from './debugBreakpoints';
 export class GoDebugConfigurationProvider
   implements vscode.DebugConfigurationProvider
 {
+  public provideDebugConfigurations(
+    folder: vscode.WorkspaceFolder | undefined,
+    token?: vscode.CancellationToken
+  ): vscode.ProviderResult<vscode.DebugConfiguration[]> {
+    return [
+      {
+        name: 'Please Go',
+        type: LANGUAGE_DEBUG_IDS.go,
+        request: 'launch',
+      },
+    ];
+  }
+
   public async resolveDebugConfiguration(
     folder: vscode.WorkspaceFolder | undefined,
     debugConfiguration: vscode.DebugConfiguration,

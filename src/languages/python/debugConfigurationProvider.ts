@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 
 import * as plz from '../../please';
 import { workspacePath } from '../../utils';
+import { LANGUAGE_DEBUG_IDS } from '../constants';
 
 // Default explode location by the PEX tool for debuggable PEX files.
 const RELATIVE_PEX_EXPLODE_LOCATION = '.cache/pex/pex-debug';
@@ -10,6 +11,19 @@ const RELATIVE_PEX_EXPLODE_LOCATION = '.cache/pex/pex-debug';
 export class PythonDebugConfigurationProvider
   implements vscode.DebugConfigurationProvider
 {
+  public provideDebugConfigurations(
+    folder: vscode.WorkspaceFolder | undefined,
+    token?: vscode.CancellationToken
+  ): vscode.ProviderResult<vscode.DebugConfiguration[]> {
+    return [
+      {
+        name: 'Please Python',
+        type: LANGUAGE_DEBUG_IDS.python,
+        request: 'launch',
+      },
+    ];
+  }
+
   public async resolveDebugConfiguration(
     folder: vscode.WorkspaceFolder | undefined,
     debugConfiguration: vscode.DebugConfiguration,
