@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import {
   retrieveCoverageTargets,
   retrieveInputFileCoverageTargets,
+  retrieveWorkspaceCoverageTargets,
 } from '../coverage/coverageTargets';
 import { coverageCommandArgs } from '../coverage/coverageInvocation';
 import * as plz from '../please';
@@ -12,9 +13,9 @@ export const SELECT_COVERAGE_TARGET_COMMAND =
   'plz.coverage.selectDocumentTarget';
 
 /**
- * Runs aggregate coverage by default. `selectTarget` is reserved for the
- * explicit focused-target command so the primary CodeLens never interrupts
- * users with a target picker.
+ * Runs fast package-scoped coverage by default. The explicit target command
+ * discovers cross-package dependents asynchronously and runs only the selected
+ * target.
  */
 export async function plzCoverDocumentCommand(args: {
   document: vscode.TextDocument;
@@ -32,12 +33,26 @@ export async function plzCoverDocumentCommand(args: {
       selectTarget,
     } = args;
 
-    let targets = sourceFile
-      ? retrieveCoverageTargets(fileName)
-      : retrieveInputFileCoverageTargets(fileName);
+    let targets: string[];
+    if (sourceFile && selectTarget) {
+      const cancellation = new vscode.CancellationTokenSource();
+      try {
+        targets = await retrieveWorkspaceCoverageTargets(
+          fileName,
+          cancellation.token
+        );
+      } finally {
+        cancellation.dispose();
+      }
+    } else {
+      targets = sourceFile
+        ? retrieveCoverageTargets(fileName)
+        : retrieveInputFileCoverageTargets(fileName);
+    }
+
     if (selectTarget && targets.length > 1) {
       const target = await vscode.window.showQuickPick(targets, {
-        placeHolder: 'Select the test target to cover',
+        placeHolder: `Select one of ${targets.length} test targets to cover`,
       });
       if (!target) {
         return;

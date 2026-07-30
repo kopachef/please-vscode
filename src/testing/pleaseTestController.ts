@@ -26,7 +26,7 @@ import {
   pleaseTestResultSummary,
   summarizePleaseTestFailures,
 } from './pleaseTestModel';
-import { executePlease, queryPlease } from './pleaseTestProcess';
+import { executePlease, queryPlease } from '../pleaseProcess';
 
 const DOCUMENT_SYMBOL_COMMAND = 'vscode.executeDocumentSymbolProvider';
 const COVERAGE_RESULTS_PATH = path.join('plz-out', 'log', 'coverage.json');

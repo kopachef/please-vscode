@@ -1,8 +1,8 @@
 import { spawn } from 'child_process';
 import * as vscode from 'vscode';
 
-import * as plz from '../please';
-import { killProcessTree } from '../utils/processUtils';
+import * as plz from './please';
+import { killProcessTree } from './utils/processUtils';
 
 export interface PleaseProcessResult {
   readonly cancelled: boolean;

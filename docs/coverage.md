@@ -38,35 +38,50 @@ which causes `go tool covdata` to reject the extra argument. Individual Go
 functions therefore retain Run and Debug actions but do not offer the native
 Coverage action.
 
-### Aggregate coverage
+### CodeLens coverage
 
 Use the `plz cover` CodeLens at the top of a supported file. The primary action
-runs every eligible target resolved for that file and does not interrupt the
-workflow with a target picker.
+runs every eligible target resolved through the fast, package-scoped path and
+does not interrupt the workflow with a target picker.
 
 For a Go source file, the extension:
 
 1. Finds the Please targets containing the source file.
-2. Finds test targets that depend directly on those source targets.
-3. Removes non-test and `no_test_coverage` targets.
-4. Runs `plz cover` with all remaining targets.
+2. Inspects targets in the same package.
+3. Finds test targets that depend directly on those source targets.
+4. Removes non-test and `no_test_coverage` targets.
+5. Runs `plz cover` with all remaining same-package targets.
 
-For a test file, the extension runs every coverable test target that directly
-contains that file.
+Limiting automatic discovery to the current package keeps the CodeLens
+responsive and prevents an ordinary coverage run from expanding into unrelated
+workspace builds.
+
+For a test file, the extension:
+
+1. Finds targets that directly contain the file.
+2. Removes non-test and `no_test_coverage` targets.
+3. Runs every remaining target.
 
 ### Focused coverage
 
 Run **Please: Cover Current File with Target...** from the Command Palette or
-the editor context menu to select one target. If only one target is eligible,
-the command runs it without showing a picker.
+the editor context menu. For a Go source file, this explicit action searches
+direct reverse dependencies across the workspace asynchronously, filters them
+in bounded metadata batches, and runs only the selected test target. This
+broader path includes eligible tests in other packages without making the
+primary CodeLens scan the entire workspace.
+
+If only one target is eligible, the command runs it without showing a picker.
+For test files, the command selects among the coverable targets that directly
+contain the file.
 
 ## Supported files
 
-| Language | File                            | Available action                                 |
-| -------- | ------------------------------- | ------------------------------------------------ |
-| Go       | Source `.go` file               | Aggregate coverage from directly dependent tests |
-| Go       | `_test.go` file                 | Coverage for test targets containing the file    |
-| Python   | `test_*.py` or `*_test.py` file | Coverage for test targets containing the file    |
+| Language | File                            | Primary CodeLens coverage              |
+| -------- | ------------------------------- | -------------------------------------- |
+| Go       | Source `.go` file               | Same-package, directly dependent tests |
+| Go       | `_test.go` file                 | Test targets containing the file       |
+| Python   | `test_*.py` or `*_test.py` file | Test targets containing the file       |
 
 ## Coverage results
 
@@ -199,9 +214,10 @@ Coverage is divided into focused modules:
 | `src/coverage/coverageResults.ts`         | Parse reports and calculate line/file summaries        |
 | `src/coverage/coverageTargetSelection.ts` | Filter coverable Please test targets                   |
 | `src/coverage/coverageTargets.ts`         | Resolve source and test files to coverage targets      |
-| `src/coverage/coverageInvocation.ts`      | Construct aggregate and selected-test arguments        |
+| `src/coverage/coverageInvocation.ts`      | Construct coverage command arguments                   |
 | `src/coverage/coverageDecorations.ts`     | Load reports and manage editor/status-bar presentation |
-| `src/commands/plzCoverDocumentCommand.ts` | Execute aggregate and focused coverage commands        |
+| `src/commands/plzCoverDocumentCommand.ts` | Execute package-scoped and focused coverage commands   |
+| `src/pleaseProcess.ts`                    | Run asynchronous, cancellable Please processes         |
 
 Run the focused coverage tests with:
 
