@@ -2,8 +2,27 @@ const assert = require('assert').strict;
 
 const {
   coverageTargetCandidates,
+  coverageTargetQueryArgs,
   parseQueryTargets,
 } = require('../out/src/coverage/coverageTargetSelection');
+
+assert.deepStrictEqual(
+  coverageTargetQueryArgs([
+    '//services/diagnostics:diagnostics_test',
+    '//services/api:api_test',
+  ]),
+  [
+    'query',
+    'print',
+    '//services/diagnostics:diagnostics_test',
+    '//services/api:api_test',
+    '--json',
+    '--field',
+    'test',
+    '--field',
+    'no_test_coverage',
+  ]
+);
 
 const targets = parseQueryTargets(
   JSON.stringify({

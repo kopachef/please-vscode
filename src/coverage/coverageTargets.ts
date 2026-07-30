@@ -1,6 +1,7 @@
 import * as plz from '../please';
 import {
   coverageTargetCandidates,
+  coverageTargetQueryArgs,
   parseQueryTargets,
 } from './coverageTargetSelection';
 
@@ -30,12 +31,7 @@ export function retrieveCoverageTargets(filename: string): string[] {
     throw new Error(`No tests depend directly on: ${sourceTargets.join(', ')}`);
   }
 
-  const queryOutput = plz.runCommand([
-    'query',
-    'print',
-    ...reverseDeps,
-    '--json',
-  ]);
+  const queryOutput = plz.runCommand(coverageTargetQueryArgs(reverseDeps));
   const candidates = coverageTargetCandidates(parseQueryTargets(queryOutput));
 
   if (candidates.length === 0) {
@@ -58,12 +54,7 @@ export function retrieveInputFileCoverageTargets(filename: string): string[] {
     );
   }
 
-  const queryOutput = plz.runCommand([
-    'query',
-    'print',
-    ...inputTargets,
-    '--json',
-  ]);
+  const queryOutput = plz.runCommand(coverageTargetQueryArgs(inputTargets));
   const candidates = coverageTargetCandidates(parseQueryTargets(queryOutput));
   if (candidates.length === 0) {
     throw new Error(`No coverable test targets contain the file: ${filename}`);
