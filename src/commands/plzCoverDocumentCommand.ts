@@ -1,3 +1,4 @@
+import { ChildProcessWithoutNullStreams } from 'child_process';
 import * as vscode from 'vscode';
 
 import {
@@ -5,6 +6,7 @@ import {
   retrieveInputFileCoverageTargets,
 } from '../coverage/coverageTargets';
 import { coverageCommandArgs } from '../coverage/coverageInvocation';
+import * as plz from '../please';
 
 export const SELECT_COVERAGE_TARGET_COMMAND =
   'plz.coverage.selectDocumentTarget';
@@ -19,7 +21,9 @@ export async function plzCoverDocumentCommand(args: {
   functionName?: string;
   sourceFile?: boolean;
   selectTarget?: boolean;
-}): Promise<void> {
+}): Promise<ChildProcessWithoutNullStreams | undefined> {
+  plz.outputChannel.show(true);
+
   try {
     const {
       document: { fileName },
@@ -41,12 +45,15 @@ export async function plzCoverDocumentCommand(args: {
       targets = [target];
     }
 
-    vscode.commands.executeCommand('plz', {
+    return await vscode.commands.executeCommand('plz', {
       command: 'cover',
       args: coverageCommandArgs(targets, functionName),
     });
   } catch (e) {
-    vscode.window.showErrorMessage(e.message);
+    plz.outputChannel.appendLine(
+      `> Coverage command failed before starting:\n${e.message}`
+    );
+    return undefined;
   }
 }
 

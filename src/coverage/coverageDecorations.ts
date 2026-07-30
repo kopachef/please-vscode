@@ -107,6 +107,25 @@ export class CoverageDecorations implements vscode.Disposable {
     return this.active && this.coverageForDocument(document) !== undefined;
   }
 
+  /** Reloads the report written by a coverage command started by the extension. */
+  public async loadForDocument(
+    document: vscode.TextDocument
+  ): Promise<void> {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (!workspaceFolder) {
+      return;
+    }
+
+    await this.load(
+      vscode.Uri.joinPath(
+        workspaceFolder.uri,
+        'plz-out',
+        'log',
+        'coverage.json'
+      )
+    );
+  }
+
   public dispose(): void {
     for (const timeout of this.pendingLoads.values()) {
       clearTimeout(timeout);

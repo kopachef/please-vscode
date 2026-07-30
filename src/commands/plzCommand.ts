@@ -1,3 +1,5 @@
+import { ChildProcessWithoutNullStreams } from 'child_process';
+
 import * as plz from '../please';
 
 import { argumentPrompt } from './utils';
@@ -6,7 +8,7 @@ export async function plzCommand(args: {
   command: string;
   args?: string[];
   runtime?: boolean;
-}): Promise<void> {
+}): Promise<ChildProcessWithoutNullStreams | undefined> {
   const { command, args: commandArgs = [], runtime = false } = args;
 
   let runtimeArgs: string | undefined;
@@ -25,5 +27,5 @@ export async function plzCommand(args: {
     wholeCommand = [...wholeCommand, '--', ...runtimeArgs.split(' ')];
   }
 
-  plz.detachCommand(wholeCommand);
+  return plz.detachCommand(wholeCommand);
 }
