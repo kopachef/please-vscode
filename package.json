@@ -153,6 +153,12 @@
           "type": "boolean",
           "default": false,
           "description": "Whether to always run Please commands in the VS Code Integrated Terminal."
+        },
+        "please.coverage.cumulative": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Accumulate coverage from separate Please CodeLens runs for the current session. Rerunning a test target replaces that target's previous contribution."
         }
       }
     },

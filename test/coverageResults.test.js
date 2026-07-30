@@ -1,6 +1,7 @@
 const assert = require('assert').strict;
 
 const {
+  accumulateCoverageResults,
   COVERED_LINE,
   coverageFilename,
   coverageLineNumbers,
@@ -107,6 +108,107 @@ assert.deepStrictEqual(
         'pkg/calculator.go': 'NUCN',
       },
     },
+  }
+);
+assert.deepStrictEqual(
+  accumulateCoverageResults(
+    {
+      files: {
+        'pkg/calculator.go': 'NCUN',
+      },
+      tests: {
+        '//pkg:first_test': {
+          'pkg/calculator.go': 'NCUN',
+        },
+      },
+    },
+    {
+      files: {
+        'pkg/calculator.go': 'NUCN',
+      },
+      tests: {
+        '//external:second_test': {
+          'pkg/calculator.go': 'NUCN',
+        },
+      },
+    }
+  ),
+  {
+    files: {
+      'pkg/calculator.go': 'NCCN',
+    },
+    tests: {
+      '//pkg:first_test': {
+        'pkg/calculator.go': 'NCUN',
+      },
+      '//external:second_test': {
+        'pkg/calculator.go': 'NUCN',
+      },
+    },
+    totalCoverage: 100,
+  }
+);
+assert.deepStrictEqual(
+  accumulateCoverageResults(
+    {
+      files: {
+        'pkg/calculator.go': 'NCUN',
+      },
+      tests: {
+        '//pkg:calculator_test': {
+          'pkg/calculator.go': 'NCUN',
+        },
+      },
+    },
+    {
+      files: {
+        'pkg/calculator.go': 'NUCN',
+      },
+      tests: {
+        '//pkg:calculator_test': {
+          'pkg/calculator.go': 'NUCN',
+        },
+      },
+    }
+  ),
+  {
+    files: {
+      'pkg/calculator.go': 'NUCN',
+    },
+    tests: {
+      '//pkg:calculator_test': {
+        'pkg/calculator.go': 'NUCN',
+      },
+    },
+    totalCoverage: 50,
+  }
+);
+assert.deepStrictEqual(
+  accumulateCoverageResults(
+    {
+      files: {
+        'pkg/first.go': 'CC',
+      },
+      tests: {
+        '//pkg:first_test': {
+          'pkg/first.go': 'CC',
+        },
+      },
+    },
+    {
+      files: {
+        'pkg/unattributed.go': 'CU',
+      },
+      tests: {},
+      totalCoverage: 50,
+    }
+  ),
+  {
+    files: {
+      'pkg/unattributed.go': 'CU',
+    },
+    tests: {},
+    totalCoverage: 50,
   }
 );
 assert.throws(

@@ -59,7 +59,7 @@ function appendTargetSection(
   heading: string,
   targets: string[]
 ): void {
-  lines.push(`**${heading}**`);
+  lines.push(`**${heading} (${targets.length})**`);
   if (targets.length === 0) {
     lines.push('No Please targets.');
   } else {

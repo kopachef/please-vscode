@@ -52,6 +52,37 @@ export function mergeCoverageResults(
   return { files, tests };
 }
 
+/**
+ * Adds a report to session coverage while keeping only the latest result for
+ * each test target. Reports without per-target data cannot be accumulated
+ * safely, so they replace the current result.
+ */
+export function accumulateCoverageResults(
+  current: CoverageResults | undefined,
+  next: CoverageResults
+): CoverageResults {
+  if (
+    !current ||
+    Object.keys(current.tests).length === 0 ||
+    Object.keys(next.tests).length === 0
+  ) {
+    return next;
+  }
+
+  const tests = {
+    ...current.tests,
+    ...next.tests,
+  };
+  const files = mergeCoverageFileSets(Object.values(tests));
+  const summary = coverageSummary(Object.values(files).join(''));
+
+  return {
+    files,
+    tests,
+    totalCoverage: summary.coverable === 0 ? undefined : summary.percentage,
+  };
+}
+
 /** Parses the coverage.json data used by presentation and audit features. */
 export function parseCoverageResults(contents: string): CoverageResults {
   const value = JSON.parse(contents);

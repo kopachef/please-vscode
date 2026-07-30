@@ -48,9 +48,9 @@ const hover = coverageAttributionMarkdown({
   coveredBy: ['//pkg/calculator:calculator_test'],
   uncoveredBy: ['//pkg/calculator:calculator_test_alt'],
 });
-assert.match(hover, /\*\*Covered by\*\*/);
+assert.match(hover, /\*\*Covered by \(1\)\*\*/);
 assert.match(hover, /`\/\/pkg\/calculator:calculator_test`/);
-assert.match(hover, /\*\*Not covered by\*\*/);
+assert.match(hover, /\*\*Not covered by \(1\)\*\*/);
 assert.match(hover, /`\/\/pkg\/calculator:calculator_test_alt`/);
 assert.doesNotMatch(hover, /latest Please coverage run/);
 
@@ -70,6 +70,14 @@ const boundedHover = coverageAttributionMarkdown({
 assert.match(boundedHover, /2 additional targets omitted/);
 assert.doesNotMatch(boundedHover, /test_6/);
 
+assert.match(
+  coverageAttributionMarkdown({
+    aggregateStatus: 'U',
+    coveredBy: [],
+    uncoveredBy: ['//pkg/calculator:calculator_test'],
+  }),
+  /\*\*Covered by \(0\)\*\*/
+);
 assert.match(
   coverageAttributionMarkdown({
     aggregateStatus: 'U',

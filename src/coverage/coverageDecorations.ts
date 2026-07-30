@@ -7,6 +7,7 @@ import {
   coverageLineAttribution,
 } from './coverageAttribution';
 import {
+  accumulateCoverageResults,
   COVERED_LINE,
   coverageFilename,
   coverageLineNumbers,
@@ -18,6 +19,7 @@ import {
 
 export const CLEAR_COVERAGE_COMMAND = 'plz.coverage.clear';
 export const COVERAGE_VISIBLE_CONTEXT = 'plz.coverageVisible';
+const CUMULATIVE_COVERAGE_SETTING = 'coverage.cumulative';
 
 const COVERAGE_RESULTS_GLOB = '**/plz-out/log/coverage.json';
 const COVERAGE_RESULTS_LOAD_DELAY_MS = 200;
@@ -108,9 +110,7 @@ export class CoverageDecorations implements vscode.Disposable {
   }
 
   /** Reloads the report written by a coverage command started by the extension. */
-  public async loadForDocument(
-    document: vscode.TextDocument
-  ): Promise<void> {
+  public async loadForDocument(document: vscode.TextDocument): Promise<void> {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
     if (!workspaceFolder) {
       return;
@@ -179,7 +179,19 @@ export class CoverageDecorations implements vscode.Disposable {
     try {
       const contents = await fs.readFile(uri.fsPath, 'utf8');
       const results = parseCoverageResults(contents);
-      this.resultsByWorkspace.set(workspaceFolder.uri.fsPath, results);
+      const workspaceKey = workspaceFolder.uri.fsPath;
+      const cumulative = vscode.workspace
+        .getConfiguration('please', uri)
+        .get<boolean>(CUMULATIVE_COVERAGE_SETTING, false);
+      this.resultsByWorkspace.set(
+        workspaceKey,
+        cumulative
+          ? accumulateCoverageResults(
+              this.resultsByWorkspace.get(workspaceKey),
+              results
+            )
+          : results
+      );
       this.refreshCoverageUi();
     } catch (e) {
       plz.outputChannel.appendLine(

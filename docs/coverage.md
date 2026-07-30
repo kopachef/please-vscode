@@ -132,6 +132,31 @@ aggregated result used for editor annotations. The extension parses both so
 that line coverage can be attributed to deterministic target labels in the
 editor.
 
+## Cumulative CodeLens coverage
+
+CodeLens coverage replaces the previous report by default. To combine coverage
+from test targets selected across separate CodeLens runs, enable:
+
+```json
+"please.coverage.cumulative": true
+```
+
+Cumulative coverage is scoped to the current extension session. Each test
+target contributes its latest report:
+
+- Running a new target adds its coverage to the aggregate.
+- Rerunning a target replaces that target's previous contribution.
+- A line covered by any accumulated target is covered in the aggregate.
+- Line hovers list cumulative **Covered by** and **Not covered by** target
+  counts and labels.
+- Clearing coverage resets all accumulated targets.
+
+Please continues to write only its latest report to
+`plz-out/log/coverage.json`. Restarting the extension therefore starts from
+that latest report rather than restoring the full prior cumulative session.
+Reports without per-target coverage data replace the current result because
+they cannot be accumulated without retaining stale target contributions.
+
 ## Editor presentation
 
 Coverage started from Test Explorer uses VS Code's native coverage
