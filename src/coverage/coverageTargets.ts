@@ -1,14 +1,16 @@
 import * as plz from '../please';
 import {
   coverageTargetCandidates,
+  coverageTargetCandidatesDependingOn,
+  coverageTargetDependencyQueryArgs,
   coverageTargetQueryArgs,
   parseQueryTargets,
 } from './coverageTargetSelection';
 
 /**
- * Finds every directly dependent test target that can contribute coverage for
- * a source file. Returning all candidates makes the default coverage result an
- * aggregate rather than an arbitrary target-specific view.
+ * Finds coverable tests in the source file's package that directly depend on
+ * its source target. Package-scoped discovery prevents a common library from
+ * triggering unrelated tests across the repository.
  */
 export function retrieveCoverageTargets(filename: string): string[] {
   const sourceTargets = plz.inputTargets(filename);
@@ -18,25 +20,18 @@ export function retrieveCoverageTargets(filename: string): string[] {
     );
   }
 
-  const reverseDepsOutput = plz.runCommand([
-    'query',
-    'revdeps',
-    ...sourceTargets,
-    '--level=1',
-  ]);
-  const reverseDeps = reverseDepsOutput
-    .split('\n')
-    .filter((label) => label.startsWith('//') || label.startsWith(':'));
-  if (reverseDeps.length === 0) {
-    throw new Error(`No tests depend directly on: ${sourceTargets.join(', ')}`);
-  }
-
-  const queryOutput = plz.runCommand(coverageTargetQueryArgs(reverseDeps));
-  const candidates = coverageTargetCandidates(parseQueryTargets(queryOutput));
+  const packageTarget = plz.buildLabel(filename, 'all');
+  const queryOutput = plz.runCommand(
+    coverageTargetDependencyQueryArgs([packageTarget])
+  );
+  const candidates = coverageTargetCandidatesDependingOn(
+    parseQueryTargets(queryOutput),
+    sourceTargets
+  );
 
   if (candidates.length === 0) {
     throw new Error(
-      `No coverable test targets depend directly on: ${sourceTargets.join(
+      `No coverable test targets in ${packageTarget} depend directly on: ${sourceTargets.join(
         ', '
       )}`
     );

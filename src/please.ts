@@ -14,7 +14,6 @@ export const TOOL_NAME = 'plz';
 export const BUILD_FILENAME_REGEX = /^BUILD(\.plz|\.build)?$/;
 export const SANDBOX_DIRECTORY = '/tmp/plz_sandbox';
 export const DEBUG_OUT_DIRECTORY = 'plz-out/debug';
-const COMMAND_MAX_BUFFER_BYTES = 16 * 1024 * 1024;
 
 export function binPath(): string | undefined {
   if (process.env.PLZ_LOCAL) {
@@ -97,7 +96,6 @@ export function runCommand(args: string[], trimSpace = true, env = process.env):
   const plz = spawnSync(plzCmd.bin, plzCmd.args, {
     cwd: workspacePath(),
     env,
-    maxBuffer: COMMAND_MAX_BUFFER_BYTES,
   });
 
   if (plz.error) {

@@ -41,15 +41,16 @@ Coverage action.
 ### Aggregate coverage
 
 Use the `plz cover` CodeLens at the top of a supported file. The primary action
-runs every eligible target resolved for that file and does not interrupt the
-workflow with a target picker.
+runs every eligible target resolved within that file's Please package and does
+not interrupt the workflow with a target picker.
 
 For a Go source file, the extension:
 
 1. Finds the Please targets containing the source file.
-2. Finds test targets that depend directly on those source targets.
-3. Removes non-test and `no_test_coverage` targets.
-4. Runs `plz cover` with all remaining targets.
+2. Queries test targets from the source file's package only.
+3. Keeps targets that depend directly on the source targets.
+4. Removes non-test and `no_test_coverage` targets.
+5. Runs `plz cover` with all remaining targets.
 
 For a test file, the extension runs every coverable test target that directly
 contains that file.
@@ -62,11 +63,11 @@ the command runs it without showing a picker.
 
 ## Supported files
 
-| Language | File                            | Available action                                 |
-| -------- | ------------------------------- | ------------------------------------------------ |
-| Go       | Source `.go` file               | Aggregate coverage from directly dependent tests |
-| Go       | `_test.go` file                 | Coverage for test targets containing the file    |
-| Python   | `test_*.py` or `*_test.py` file | Coverage for test targets containing the file    |
+| Language | File                            | Available action                              |
+| -------- | ------------------------------- | --------------------------------------------- |
+| Go       | Source `.go` file               | Package-scoped coverage from dependent tests  |
+| Go       | `_test.go` file                 | Coverage for test targets containing the file |
+| Python   | `test_*.py` or `*_test.py` file | Coverage for test targets containing the file |
 
 ## Coverage results
 
@@ -159,7 +160,8 @@ toolbar or Testing view actions to hide or replace its visuals.
   function-level or workspace-level attribution view yet.
 - Coverage depends on the files and statuses produced by Please and the
   language-specific coverage implementation.
-- Only directly associated test targets are selected automatically.
+- Source-file coverage only selects directly associated tests from the same
+  Please package.
 
 ## Troubleshooting
 

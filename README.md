@@ -11,8 +11,9 @@ Please coverage for the associated test targets. The extension highlights
 covered and uncovered lines, shows a coverage summary in the status bar, and
 provides a visible `[clear]` CodeLens while coverage is displayed.
 
-By default, the extension aggregates all eligible test targets. Use
-**Please: Cover Current File with Target...** for a focused run.
+For source files, the extension covers eligible tests in the same Please
+package that directly depend on the source target. Use **Please: Cover Current
+File with Target...** for a focused run when more than one is available.
 
 See [Coverage](docs/coverage.md) for supported files, result semantics,
 troubleshooting, and contributor information.
