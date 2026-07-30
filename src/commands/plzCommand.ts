@@ -1,4 +1,4 @@
-import { ChildProcessWithoutNullStreams } qfrom 'child_process';
+import { ChildProcessWithoutNullStreams } from 'child_process';
 
 import * as vscode from 'vscode';
 import * as plz from '../please';
