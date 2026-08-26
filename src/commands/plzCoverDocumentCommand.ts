@@ -4,6 +4,7 @@ import {
   retrieveCoverageTargets,
   retrieveInputFileCoverageTargets,
 } from '../coverage/coverageTargets';
+import { CoverageDecorations } from '../coverage/coverageDecorations';
 import { coverageCommandArgs } from '../coverage/coverageInvocation';
 
 export const SELECT_COVERAGE_TARGET_COMMAND =
@@ -14,12 +15,15 @@ export const SELECT_COVERAGE_TARGET_COMMAND =
  * explicit focused-target command so the primary CodeLens never interrupts
  * users with a target picker.
  */
-export async function plzCoverDocumentCommand(args: {
-  document: vscode.TextDocument;
-  functionName?: string;
-  sourceFile?: boolean;
-  selectTarget?: boolean;
-}): Promise<void> {
+export async function plzCoverDocumentCommand(
+  args: {
+    document: vscode.TextDocument;
+    functionName?: string;
+    sourceFile?: boolean;
+    selectTarget?: boolean;
+  },
+  coverageDecorations?: CoverageDecorations
+): Promise<void> {
   try {
     const {
       document: { fileName },
@@ -41,7 +45,8 @@ export async function plzCoverDocumentCommand(args: {
       targets = [target];
     }
 
-    vscode.commands.executeCommand('plz', {
+    await coverageDecorations?.expectNewResults(args.document.uri);
+    await vscode.commands.executeCommand('plz', {
       command: 'cover',
       args: coverageCommandArgs(targets, functionName),
     });
@@ -50,16 +55,21 @@ export async function plzCoverDocumentCommand(args: {
   }
 }
 
-export async function plzCoverActiveDocumentWithTargetCommand(): Promise<void> {
+export async function plzCoverActiveDocumentWithTargetCommand(
+  coverageDecorations?: CoverageDecorations
+): Promise<void> {
   const document = vscode.window.activeTextEditor?.document;
   if (!document) {
     return;
   }
 
-  await plzCoverDocumentCommand({
-    document,
-    sourceFile:
-      document.languageId === 'go' && !document.fileName.endsWith('_test.go'),
-    selectTarget: true,
-  });
+  await plzCoverDocumentCommand(
+    {
+      document,
+      sourceFile:
+        document.languageId === 'go' && !document.fileName.endsWith('_test.go'),
+      selectTarget: true,
+    },
+    coverageDecorations
+  );
 }

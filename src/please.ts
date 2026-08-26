@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as semver from 'semver';
 import * as vscode from 'vscode';
 
+import { terminalCommandLine } from './terminalCommandLine';
 import { workspacePath } from './utils';
 import { getBinPath } from './utils/pathUtils';
 
@@ -69,13 +70,7 @@ export function detachCommand(args: string[]): ChildProcessWithoutNullStreams {
 // Runs a Please command inside the VS Code Integrated Terminal.
 export function runInTerminal(args: string[]): void {
   const plzCmd = cmd(args);
-  const commandLine = `"${plzCmd.bin || 'plz'}" ${plzCmd.args.map(arg => {
-    // Escape arguments with quotes if they contain spaces or special characters
-    if (/[\s"'$&;<>()|*?~]/.test(arg)) {
-      return `"${arg.replace(/"/g, '\\"')}"`;
-    }
-    return arg;
-  }).join(' ')}`;
+  const commandLine = terminalCommandLine(plzCmd.bin, plzCmd.args);
 
   let terminal = vscode.window.terminals.find((t) => t.name === 'Please');
   if (!terminal) {
@@ -90,7 +85,11 @@ export function runInTerminal(args: string[]): void {
 }
 
 // Runs a command with the intend of obtaining stdout. An error is throw if something fails.
-export function runCommand(args: string[], trimSpace = true, env = process.env): string {
+export function runCommand(
+  args: string[],
+  trimSpace = true,
+  env = process.env
+): string {
   const plzCmd = cmd(args);
 
   const plz = spawnSync(plzCmd.bin, plzCmd.args, {

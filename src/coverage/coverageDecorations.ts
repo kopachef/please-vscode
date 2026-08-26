@@ -6,6 +6,7 @@ import {
   coverageAttributionMarkdown,
   coverageLineAttribution,
 } from './coverageAttribution';
+import { coverageResultVersion } from './coverageResultVersion';
 import {
   COVERED_LINE,
   coverageFilename,
@@ -21,6 +22,12 @@ export const COVERAGE_VISIBLE_CONTEXT = 'plz.coverageVisible';
 
 const COVERAGE_RESULTS_GLOB = '**/plz-out/log/coverage.json';
 const COVERAGE_RESULTS_LOAD_DELAY_MS = 200;
+const COVERAGE_RESULTS_POLL_INTERVAL_MS = 500;
+const COVERAGE_RESULTS_POLL_TIMEOUT_MS = 30 * 60 * 1000;
+
+interface CoverageResultMonitor {
+  timeout?: NodeJS.Timeout;
+}
 
 interface DocumentCoverage {
   filename: string;
@@ -36,6 +43,7 @@ export class CoverageDecorations implements vscode.Disposable {
   private readonly coverageChanged = new vscode.EventEmitter<void>();
   private readonly resultsByWorkspace = new Map<string, CoverageResults>();
   private readonly pendingLoads = new Map<string, NodeJS.Timeout>();
+  private readonly resultMonitors = new Map<string, CoverageResultMonitor>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly coveredDecoration =
     vscode.window.createTextEditorDecorationType({
@@ -90,11 +98,52 @@ export class CoverageDecorations implements vscode.Disposable {
     return this.coverageForDocument(document) !== undefined;
   }
 
+  /**
+   * Watches the exact report for a newer result after a terminal coverage run.
+   * This is independent of VS Code's workspace watcher, which can drop events
+   * while Please creates a large `plz-out` tree on a first build.
+   */
+  public async expectNewResults(documentUri: vscode.Uri): Promise<void> {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
+    if (!workspaceFolder) {
+      return;
+    }
+
+    const resultUri = vscode.Uri.joinPath(
+      workspaceFolder.uri,
+      'plz-out',
+      'log',
+      'coverage.json'
+    );
+    const workspaceKey = workspaceFolder.uri.fsPath;
+
+    try {
+      const baseline = await coverageResultVersion(resultUri.fsPath);
+      this.stopResultMonitor(workspaceKey);
+      const monitor: CoverageResultMonitor = {};
+      this.resultMonitors.set(workspaceKey, monitor);
+      this.scheduleResultPoll(
+        workspaceKey,
+        resultUri,
+        baseline,
+        Date.now() + COVERAGE_RESULTS_POLL_TIMEOUT_MS,
+        monitor
+      );
+    } catch (e) {
+      plz.outputChannel.appendLine(
+        `Error monitoring Please coverage results: ${e.message}`
+      );
+    }
+  }
+
   public dispose(): void {
     for (const timeout of this.pendingLoads.values()) {
       clearTimeout(timeout);
     }
     this.pendingLoads.clear();
+    for (const workspaceKey of [...this.resultMonitors.keys()]) {
+      this.stopResultMonitor(workspaceKey);
+    }
     this.resultsByWorkspace.clear();
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -134,10 +183,55 @@ export class CoverageDecorations implements vscode.Disposable {
     );
   }
 
-  private async load(uri: vscode.Uri): Promise<void> {
+  private scheduleResultPoll(
+    workspaceKey: string,
+    uri: vscode.Uri,
+    baseline: string | undefined,
+    deadline: number,
+    monitor: CoverageResultMonitor
+  ): void {
+    monitor.timeout = setTimeout(async () => {
+      if (this.resultMonitors.get(workspaceKey) !== monitor) {
+        return;
+      }
+
+      try {
+        const version = await coverageResultVersion(uri.fsPath);
+        if (version !== undefined && version !== baseline) {
+          if (await this.load(uri)) {
+            this.stopResultMonitor(workspaceKey);
+            return;
+          }
+        }
+      } catch (e) {
+        plz.outputChannel.appendLine(
+          `Error monitoring Please coverage results: ${e.message}`
+        );
+        this.stopResultMonitor(workspaceKey);
+        return;
+      }
+
+      if (Date.now() >= deadline) {
+        this.stopResultMonitor(workspaceKey);
+        return;
+      }
+
+      this.scheduleResultPoll(workspaceKey, uri, baseline, deadline, monitor);
+    }, COVERAGE_RESULTS_POLL_INTERVAL_MS);
+  }
+
+  private stopResultMonitor(workspaceKey: string): void {
+    const monitor = this.resultMonitors.get(workspaceKey);
+    if (monitor?.timeout) {
+      clearTimeout(monitor.timeout);
+    }
+    this.resultMonitors.delete(workspaceKey);
+  }
+
+  private async load(uri: vscode.Uri): Promise<boolean> {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
     if (!workspaceFolder) {
-      return;
+      return false;
     }
 
     try {
@@ -145,10 +239,12 @@ export class CoverageDecorations implements vscode.Disposable {
       const results = parseCoverageResults(contents);
       this.resultsByWorkspace.set(workspaceFolder.uri.fsPath, results);
       this.refreshCoverageUi();
+      return true;
     } catch (e) {
       plz.outputChannel.appendLine(
         `Error loading coverage results from '${uri.fsPath}': ${e.message}`
       );
+      return false;
     }
   }
 

@@ -112,15 +112,13 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('plz.test.document', plzTestDocumentCommand)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'plz.cover.document',
-      plzCoverDocumentCommand
+    vscode.commands.registerCommand('plz.cover.document', (args) =>
+      plzCoverDocumentCommand(args, coverageDecorations)
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      SELECT_COVERAGE_TARGET_COMMAND,
-      plzCoverActiveDocumentWithTargetCommand
+    vscode.commands.registerCommand(SELECT_COVERAGE_TARGET_COMMAND, () =>
+      plzCoverActiveDocumentWithTargetCommand(coverageDecorations)
     )
   );
   context.subscriptions.push(
