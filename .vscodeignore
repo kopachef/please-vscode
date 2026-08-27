@@ -1,7 +1,16 @@
 .vscode/**
 .vscode-test/**
+.env
+.prettierignore
+.prettierrc.json
 .gitignore
+CONTRIBUTING.md
+dist/**
+distribution/**
 out/test/**
+package-lock.json
+pkg/**
+scripts/**
 test/**
 src/**
 **/*.map
