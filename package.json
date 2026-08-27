@@ -1,19 +1,19 @@
 {
-  "name": "plz-vscode",
-  "displayName": "Please",
-  "description": "Integrations for the Please build system",
+  "name": "plz-vscode-tm",
+  "displayName": "Please (TM Edition)",
+  "description": "TM edition of the VS Code integrations for the Please build system",
   "author": "peter.ebden@gmail.com",
   "license": "Apache-2.0",
   "icon": "plz_128.png",
   "version": "1.2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thought-machine/please-vscode"
+    "url": "https://github.com/kopachef/please-vscode"
   },
   "bugs": {
-    "url": "https://github.com/thought-machine/please-vscode/issues"
+    "url": "https://github.com/kopachef/please-vscode/issues"
   },
-  "publisher": "please-build",
+  "publisher": "kopachef",
   "categories": [
     "Programming Languages",
     "Debuggers"
@@ -214,8 +214,14 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -b && cp -R scripts/ out/",
+    "vscode:prepublish": "npm run clean && npm run compile",
+    "clean": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\"",
+    "compile": "tsc -b && mkdir -p out/scripts && cp -R scripts/. out/scripts/",
+    "package": "node -e \"require('fs').mkdirSync('dist', { recursive: true })\" && vsce package --follow-symlinks --out dist/please-vscode-tm.vsix",
+    "tm:install": "./distribution/install/please-vscode-tm.sh install",
+    "tm:open": "./distribution/install/please-vscode-tm.sh open",
+    "tm:status": "./distribution/install/please-vscode-tm.sh status",
+    "tm:uninstall": "./distribution/install/please-vscode-tm.sh uninstall",
     "test": "npm run compile && node test/coverageResults.test.js && node test/coverageTargets.test.js && node test/coverageInvocation.test.js && node test/coverageAttribution.test.js && node test/coverageResultVersion.test.js && node test/terminalCommandLine.test.js",
     "watch": "tsc -b -w",
     "prettify": "prettier --write ."
@@ -234,6 +240,7 @@
     "@types/node": "^15.0.1",
     "@types/semver": "^7.3.5",
     "@types/vscode": "^1.52.0",
+    "@vscode/vsce": "3.9.2",
     "prettier": "2.3.0",
     "typescript": "^4.2.4"
   }

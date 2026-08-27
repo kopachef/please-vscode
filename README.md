@@ -4,6 +4,14 @@ This is the VSCode extension for the Please build system.
 
 See https://please.build or https://github.com/thought-machine/please for more information about Please itself.
 
+## TM edition
+
+This branch packages a separately identified **Please (TM Edition)** extension
+and provides isolated install, launch, and uninstall commands. It does not
+replace the released Please extension.
+
+See [TM edition distribution](docs/tm-edition.md) for the tested workflow.
+
 ## Coverage
 
 Open a supported Go or Python file and use the `plz cover` CodeLens to run
