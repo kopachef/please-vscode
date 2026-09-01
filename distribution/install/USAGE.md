@@ -246,8 +246,9 @@ from the implementation file being inspected. The coverage feature maps that
 file to its owning Please target, finds the relevant tests, runs `plz cover`,
 and projects `coverage.json` back onto the editor.
 
-This feature does not depend on the dynamic BUILD CodeLens configuration.
-Coverage target selection uses Please ownership and dependency queries.
+This feature does not use the per-rule dynamic BUILD CodeLens configuration.
+Coverage target selection uses Please ownership and dependency queries, plus
+its own optional BUILD-definition allowlist.
 
 ### Coverage from an implementation file
 
@@ -283,10 +284,28 @@ $ plz query revdeps //calculator/domain:calculator --level=1
 //calculator/domain:calculator_test
 //calculator/sat:calculator_sat_test_addition
 //calculator/sat:calculator_sat_test_subtraction
+//calculator/sat:calculator_expensive_test
 ```
 
-The extension queries metadata for those labels and keeps only test targets
-that have not set `no_test_coverage`. It runs one aggregate command:
+Suppose the SAT package also invokes an `expensive_go_test` build definition,
+but this workspace setting permits only the ordinary and variant rules:
+
+```jsonc
+{
+  "please.coverage.allowedBuildDefs": ["go_test", "variant_go_test"]
+}
+```
+
+The values are the function names used for top-level calls in BUILD files, not
+target labels. For generated targets, the extension maps the concrete label
+back to the longest matching rule `name` prefix. Both
+`:calculator_sat_test_addition` and `:calculator_sat_test_subtraction` are
+therefore associated with the `variant_go_test` call named
+`calculator_sat_test`.
+
+The extension excludes `calculator_expensive_test`, queries metadata for the
+remaining labels, and keeps only test targets that have not set
+`no_test_coverage`. It runs one aggregate command:
 
 ```text
 plz cover \
@@ -298,6 +317,11 @@ plz cover \
 Tests can therefore contribute to the same implementation file from different
 packages, as long as their targets are direct dependants of the source target.
 The aggregate command is what combines their coverage into one report.
+
+Leaving `please.coverage.allowedBuildDefs` empty preserves the original
+behaviour and allows every direct dependant. The allowlist is applied after
+`plz query revdeps`: it reduces the metadata lookup and the tests that actually
+run, but it does not avoid the initial repository graph query.
 
 To cover only one of the eligible targets, open the Command Palette and run
 **Please: Cover Current File with Target...**.
@@ -372,7 +396,10 @@ If `plz cover` cannot find targets:
 2. For a Go implementation file, run
    `plz query revdeps <source-target> --level=1`.
 3. Confirm that the expected tests directly depend on the source target.
-4. Confirm each candidate is a test target and does not set
+4. If `please.coverage.allowedBuildDefs` is configured, confirm it contains the
+   BUILD function name, such as `go_test`, rather than a label such as
+   `//calculator/domain:calculator_test`.
+5. Confirm each candidate is a test target and does not set
    `no_test_coverage`.
 
 If the command succeeds but no colours appear:
@@ -393,13 +420,19 @@ terminal:
 {
   "editor.codeLens": true,
   "please.runInTerminal": true,
+  "please.coverage.allowedBuildDefs": ["go_test", "variant_go_test"],
   "plz.trace.server": "off"
 }
 ```
 
-`please.runInTerminal` affects commands launched by the extension. It does not
-change how dynamic targets are discovered or how coverage targets are
-selected.
+`please.runInTerminal` sends `plz cover` and other Please commands to the
+integrated terminal, where Please retains its coloured output. Set it to
+`false` to run commands in the **Please** Output channel instead. Coverage
+target discovery errors always open the Output channel.
+
+`please.coverage.allowedBuildDefs` is optional. Remove it or use `[]` to allow
+all directly dependent test targets. It controls coverage selection only; it
+does not change dynamic BUILD CodeLens actions.
 
 Add the top-level `please` object only when custom BUILD rules need extra
 dynamic actions:
@@ -424,5 +457,5 @@ dynamic actions:
 }
 ```
 
-Coverage overlays currently have no separate `settings.json` configuration.
-They use the Please ownership and dependency graph described above.
+Coverage still uses the Please ownership and dependency graph described above;
+the allowlist narrows which discovered definitions may contribute targets.

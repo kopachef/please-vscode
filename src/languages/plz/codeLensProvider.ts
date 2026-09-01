@@ -5,13 +5,7 @@ import * as vscode from 'vscode';
 import { DEBUGGABLE_LANGUAGE_RULES } from '../constants';
 import * as plz from '../../please';
 import { getBinPathUsingConfig, workspacePath } from '../../utils';
-
-// Rule call item structure returned by `scripts/rule_calls.py`.
-interface RuleCall {
-  id: string;
-  name: string;
-  line: number;
-}
+import { getRuleCalls, RuleCall } from './ruleCalls';
 
 export class BuildFileCodeLensProvider implements vscode.CodeLensProvider {
   private python3NotFoundMessageShown = false;
@@ -44,8 +38,7 @@ export class BuildFileCodeLensProvider implements vscode.CodeLensProvider {
 
     let ruleCalls: RuleCall[];
     try {
-      const content = await getRuleCalls(python3, document.getText());
-      ruleCalls = JSON.parse(content);
+      ruleCalls = await getRuleCalls(python3, document.getText());
     } catch (e) {
       plz.outputChannel.appendLine(
         `Error placing codelenses on '${document.fileName}': ${e.message}`
@@ -235,26 +228,6 @@ async function queryCompletions(target: string): Promise<string[]> {
         resolve(lines);
       }
     );
-  });
-}
-
-async function getRuleCalls(
-  python3Path: string,
-  buildFileContents: string
-): Promise<string> {
-  return await new Promise<string>((resolve, reject) => {
-    const proc = execFile(
-      python3Path,
-      [path.join(__dirname, '../../../scripts/rule_calls.py')],
-      { encoding: 'utf-8' },
-      (err, stdout, stderr) => {
-        if (err || stderr) {
-          return reject(err || stderr);
-        }
-        resolve(stdout);
-      }
-    );
-    proc.stdin.end(buildFileContents);
   });
 }
 

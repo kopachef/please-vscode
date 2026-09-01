@@ -25,7 +25,12 @@ export async function plzCoverDocumentCommand(
   },
   coverageDecorations?: CoverageDecorations
 ): Promise<void> {
-  plz.outputChannel.show(true);
+  const useTerminal = vscode.workspace
+    .getConfiguration('please')
+    .get<boolean>('runInTerminal', false);
+  if (!useTerminal) {
+    plz.outputChannel.show(true);
+  }
   plz.outputChannel.appendLine(
     `> Discovering coverage targets for ${args.document.fileName}`
   );
@@ -41,10 +46,15 @@ export async function plzCoverDocumentCommand(
       sourceFile,
       selectTarget,
     } = args;
+    const allowedBuildDefs = vscode.workspace
+      .getConfiguration('please.coverage')
+      .get<string[]>('allowedBuildDefs', [])
+      .map((buildDef) => buildDef.trim())
+      .filter((buildDef) => buildDef.length > 0);
 
     let targets = sourceFile
-      ? retrieveCoverageTargets(fileName)
-      : retrieveInputFileCoverageTargets(fileName);
+      ? await retrieveCoverageTargets(fileName, allowedBuildDefs)
+      : await retrieveInputFileCoverageTargets(fileName, allowedBuildDefs);
     if (selectTarget && targets.length > 1) {
       const target = await vscode.window.showQuickPick(targets, {
         placeHolder: 'Select the test target to cover',
@@ -62,6 +72,7 @@ export async function plzCoverDocumentCommand(
       args: coverageCommandArgs(targets, functionName),
     });
   } catch (e) {
+    plz.outputChannel.show(true);
     plz.outputChannel.appendLine(
       `> Coverage command failed before starting:\n${e.message}`
     );
