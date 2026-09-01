@@ -3,6 +3,20 @@ interface QueryTarget {
   noTestCoverage: boolean;
 }
 
+/** Requests only the target metadata needed to decide coverage eligibility. */
+export function coverageTargetQueryArgs(targets: string[]): string[] {
+  return [
+    'query',
+    'print',
+    ...targets,
+    '--json',
+    '--field',
+    'test',
+    '--field',
+    'no_test_coverage',
+  ];
+}
+
 /** Parses the target metadata returned by `plz query print --json`. */
 export function parseQueryTargets(output: string): Map<string, QueryTarget> {
   const value = JSON.parse(output);

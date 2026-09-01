@@ -6,6 +6,7 @@ import {
 } from '../coverage/coverageTargets';
 import { CoverageDecorations } from '../coverage/coverageDecorations';
 import { coverageCommandArgs } from '../coverage/coverageInvocation';
+import * as plz from '../please';
 
 export const SELECT_COVERAGE_TARGET_COMMAND =
   'plz.coverage.selectDocumentTarget';
@@ -24,6 +25,15 @@ export async function plzCoverDocumentCommand(
   },
   coverageDecorations?: CoverageDecorations
 ): Promise<void> {
+  plz.outputChannel.show(true);
+  plz.outputChannel.appendLine(
+    `> Discovering coverage targets for ${args.document.fileName}`
+  );
+
+  // Yield once so the Output panel can render before synchronous Please
+  // metadata queries begin.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
   try {
     const {
       document: { fileName },
@@ -45,13 +55,16 @@ export async function plzCoverDocumentCommand(
       targets = [target];
     }
 
+    plz.outputChannel.appendLine(`> Coverage targets: ${targets.join(', ')}`);
     await coverageDecorations?.expectNewResults(args.document.uri);
     await vscode.commands.executeCommand('plz', {
       command: 'cover',
       args: coverageCommandArgs(targets, functionName),
     });
   } catch (e) {
-    vscode.window.showErrorMessage(e.message);
+    plz.outputChannel.appendLine(
+      `> Coverage command failed before starting:\n${e.message}`
+    );
   }
 }
 
