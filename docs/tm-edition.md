@@ -30,8 +30,37 @@ The `code` command must be available on `PATH`. In VS Code on macOS, run
 
 ## Install through the standalone Please target
 
-The executable target under `distribution/install` supports two installation
-paths:
+The executable target under `distribution/install` supports an isolated
+desktop profile and an active Remote SSH extension host.
+
+### Remote SSH
+
+Connect from local VS Code first, then run these commands in that remote
+window's integrated terminal:
+
+```sh
+command -v code
+plz run distribution/install:please_vscode_tm -- remote-install
+plz run distribution/install:please_vscode_tm -- remote-status
+```
+
+The `code` path must contain `.vscode-server` and end in `remote-cli/code`.
+After installation, run **Developer: Reload Window**. Generate the VSIX from
+source before installing it remotely with:
+
+```sh
+plz run distribution/install:please_vscode_tm -- remote-build-install
+```
+
+Remove only TM Edition from the remote extension host with:
+
+```sh
+plz run distribution/install:please_vscode_tm -- remote-uninstall
+```
+
+### Isolated desktop profile
+
+When VS Code runs directly on the machine executing the target:
 
 ```sh
 # Download and install the latest published VSIX.
