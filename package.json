@@ -222,7 +222,7 @@
     "tm:open": "./distribution/install/please-vscode-tm.sh open",
     "tm:status": "./distribution/install/please-vscode-tm.sh status",
     "tm:uninstall": "./distribution/install/please-vscode-tm.sh uninstall",
-    "test": "npm run compile && node test/coverageResults.test.js && node test/coverageTargets.test.js && node test/coverageInvocation.test.js && node test/coverageAttribution.test.js && node test/coverageResultVersion.test.js && node test/terminalCommandLine.test.js",
+    "test": "npm run compile && node test/coverageResults.test.js && node test/coverageTargets.test.js && node test/coverageInvocation.test.js && node test/coverageAttribution.test.js && node test/coverageResultVersion.test.js && node test/terminalCommandLine.test.js && node test/distributionInstaller.test.js",
     "watch": "tsc -b -w",
     "prettify": "prettier --write ."
   },
