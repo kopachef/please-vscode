@@ -8,10 +8,10 @@ does not replace the released Please extension.
 Run the target using its assigned build label:
 
 ```sh
-plz run <target-label> -- install
-plz run <target-label> -- build-install
-plz run <target-label> -- status
-plz run <target-label> -- uninstall
+plz run distribution/install:please_vscode_tm -- install
+plz run distribution/install:please_vscode_tm -- build-install
+plz run distribution/install:please_vscode_tm -- status
+plz run distribution/install:please_vscode_tm -- uninstall
 ```
 
 ## Install the published release
@@ -21,7 +21,7 @@ Otherwise it downloads `please-vscode-tm.vsix` from the latest GitHub release.
 You can supply a different local artifact or URL:
 
 ```sh
-plz run <target-label> -- install /path/to/please-vscode-tm.vsix
+plz run distribution/install:please_vscode_tm -- install /path/to/please-vscode-tm.vsix
 ```
 
 For a pinned rollout, set `PLEASE_TM_VSIX_URL` to a versioned release URL and
@@ -34,7 +34,7 @@ Use `build-install` when the workstation should generate the VSIX instead of
 downloading the published artifact:
 
 ```sh
-plz run <target-label> -- build-install
+plz run distribution/install:please_vscode_tm -- build-install
 ```
 
 This clones the `release` branch of `kopachef/please-vscode` into a temporary
@@ -45,8 +45,8 @@ To generate the VSIX without installing it, provide an output path and an
 optional branch or tag:
 
 ```sh
-plz run <target-label> -- build ./please-vscode-tm.vsix v1.2.0-tm.1
-plz run <target-label> -- install ./please-vscode-tm.vsix
+plz run distribution/install:please_vscode_tm -- build ./please-vscode-tm.vsix v1.2.0-tm.1
+plz run distribution/install:please_vscode_tm -- install ./please-vscode-tm.vsix
 ```
 
 Set `PLEASE_TM_SOURCE_REF` to change the default `release` ref or
