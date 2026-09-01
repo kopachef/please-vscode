@@ -35,10 +35,10 @@ paths:
 
 ```sh
 # Download and install the latest published VSIX.
-plz run <target-label> -- install
+plz run distribution/install:please_vscode_tm -- install
 
 # Clone the release branch, build a fresh VSIX, and install it.
-plz run <target-label> -- build-install
+plz run distribution/install:please_vscode_tm -- build-install
 ```
 
 The source-build path requires `git`, Node.js 20 or newer, and `npm`. It builds
@@ -46,7 +46,7 @@ in a temporary checkout and removes that checkout after packaging. To retain
 the generated artifact instead of installing it immediately:
 
 ```sh
-plz run <target-label> -- build ./please-vscode-tm.vsix v1.2.0-tm.1
+plz run distribution/install:please_vscode_tm -- build ./please-vscode-tm.vsix v1.2.0-tm.1
 ```
 
 See [`distribution/install/README.md`](../distribution/install/README.md) for
