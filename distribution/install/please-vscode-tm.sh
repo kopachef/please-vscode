@@ -16,17 +16,33 @@ tm_bundled_vsix="$tm_script_dir/please-vscode-tm.vsix"
 tm_default_vsix="$tm_repo_root/dist/please-vscode-tm.vsix"
 tm_release_vsix_url=${PLEASE_TM_VSIX_URL:-"https://github.com/kopachef/please-vscode/releases/latest/download/please-vscode-tm.vsix"}
 tm_expected_sha256=${PLEASE_TM_VSIX_SHA256:-}
+tm_source_repository=${PLEASE_TM_SOURCE_REPOSITORY:-"https://github.com/kopachef/please-vscode.git"}
+tm_source_ref=${PLEASE_TM_SOURCE_REF:-release}
+tm_tmp_root=${TMPDIR:-/tmp}
+tm_tmp_root=${tm_tmp_root%/}
+tm_build_dir=
+tm_built_vsix=
 
 usage() {
   cat <<'EOF'
 Usage: please-vscode-tm.sh <command> [argument]
 
 Commands:
-  install [vsix-or-url]  Install Please (TM Edition) in its isolated directory.
-  open [workspace]       Open a workspace using the isolated TM edition.
-  status                 Show the installed TM edition version.
-  uninstall              Remove only the isolated TM edition installation.
+  install [vsix-or-url]       Install the published or supplied VSIX.
+  build [output-vsix] [ref]   Build a VSIX from source without installing it.
+  build-install [ref]         Build a VSIX from source and install it.
+  open [workspace]            Open a workspace using the isolated TM edition.
+  status                      Show the installed TM edition version.
+  uninstall                   Remove only the isolated TM edition installation.
 EOF
+}
+
+require_command() {
+  tm_required_command=$1
+  if ! command -v "$tm_required_command" >/dev/null 2>&1; then
+    echo "Cannot find '$tm_required_command' required to build the VSIX from source." >&2
+    exit 1
+  fi
 }
 
 require_code() {
@@ -45,6 +61,24 @@ validate_managed_home() {
       ;;
   esac
 }
+
+cleanup_source_build() {
+  if [ -z "$tm_build_dir" ]; then
+    return 0
+  fi
+
+  case "$tm_build_dir" in
+    "$tm_tmp_root"/please-vscode-tm-build.*)
+      rm -rf "$tm_build_dir"
+      tm_build_dir=
+      ;;
+    *)
+      echo "Refusing to remove unexpected source-build directory: $tm_build_dir" >&2
+      ;;
+  esac
+}
+
+trap cleanup_source_build 0
 
 installed_version() {
   if [ ! -d "$tm_extensions" ]; then
@@ -114,6 +148,56 @@ verify_vsix() {
     echo "Actual:   $tm_actual_sha256" >&2
     exit 1
   fi
+}
+
+build_source_vsix() {
+  tm_output_path=${1:-"$PWD/please-vscode-tm.vsix"}
+  tm_requested_ref=${2:-$tm_source_ref}
+
+  require_command git
+  require_command npm
+
+  case "$tm_output_path" in
+    /*) ;;
+    *) tm_output_path="$PWD/$tm_output_path" ;;
+  esac
+
+  tm_build_dir=$(mktemp -d "$tm_tmp_root/please-vscode-tm-build.XXXXXX")
+  tm_checkout="$tm_build_dir/repository"
+
+  echo "Cloning $tm_source_repository at $tm_requested_ref" >&2
+  git clone --depth 1 --branch "$tm_requested_ref" \
+    "$tm_source_repository" "$tm_checkout"
+
+  (
+    cd "$tm_checkout"
+    npm ci --include=dev
+    npm run package
+  )
+
+  tm_packaged_vsix="$tm_checkout/dist/please-vscode-tm.vsix"
+  if [ ! -f "$tm_packaged_vsix" ]; then
+    echo "Source build completed without producing $tm_packaged_vsix." >&2
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$tm_output_path")"
+  cp "$tm_packaged_vsix" "$tm_output_path"
+  tm_built_vsix=$tm_output_path
+  echo "Built Please (TM Edition): $tm_built_vsix"
+
+  cleanup_source_build
+}
+
+build_install_tm() {
+  require_code
+  validate_managed_home
+
+  mkdir -p "$tm_downloads"
+  build_source_vsix \
+    "$tm_downloads/please-vscode-tm-from-source.vsix" \
+    "${1:-$tm_source_ref}"
+  install_tm "$tm_built_vsix"
 }
 
 install_tm() {
@@ -205,6 +289,8 @@ fi
 
 case "$tm_command" in
   install) install_tm "${1:-}" ;;
+  build) build_source_vsix "${1:-}" "${2:-$tm_source_ref}" ;;
+  build-install) build_install_tm "${1:-$tm_source_ref}" ;;
   open) open_tm "${1:-}" ;;
   status) status_tm ;;
   uninstall) uninstall_tm ;;

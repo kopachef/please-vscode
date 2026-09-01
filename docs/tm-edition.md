@@ -10,7 +10,7 @@ overlapping commands and CodeLens providers in the same extension host.
 
 ## Build and install
 
-From this repository:
+From an existing checkout of this repository:
 
 ```sh
 npm ci --include=dev
@@ -27,6 +27,30 @@ VSIX or an HTTP(S) URL directly:
 
 The `code` command must be available on `PATH`. In VS Code on macOS, run
 **Shell Command: Install 'code' command in PATH** if necessary.
+
+## Install through the standalone Please target
+
+The executable target under `distribution/install` supports two installation
+paths:
+
+```sh
+# Download and install the latest published VSIX.
+plz run <target-label> -- install
+
+# Clone the release branch, build a fresh VSIX, and install it.
+plz run <target-label> -- build-install
+```
+
+The source-build path requires `git`, Node.js 20 or newer, and `npm`. It builds
+in a temporary checkout and removes that checkout after packaging. To retain
+the generated artifact instead of installing it immediately:
+
+```sh
+plz run <target-label> -- build ./please-vscode-tm.vsix v1.2.0-tm.1
+```
+
+See [`distribution/install/README.md`](../distribution/install/README.md) for
+the source repository/ref overrides and the full target interface.
 
 ## Launch and inspect
 
